@@ -14,7 +14,34 @@ export default function App() {
     return (
         <AppContextProvider>
             <ReactFlowProvider>
-                <ConfigProvider  theme={{ algorithm: theme.defaultAlgorithm }}>
+                <ConfigProvider
+                    theme={{
+                        algorithm: theme.defaultAlgorithm,
+                        token: {
+                            colorPrimary: '#18181b',
+                            colorInfo: '#2563eb',
+                            colorSuccess: '#16a34a',
+                            colorWarning: '#d97706',
+                            colorError: '#dc2626',
+                            colorBgBase: '#fafafa',
+                            colorBgLayout: '#fafafa',
+                            colorBgContainer: '#ffffff',
+                            colorBorder: '#e4e4e7',
+                            colorBorderSecondary: '#eeeeef',
+                            colorText: '#18181b',
+                            colorTextSecondary: '#71717a',
+                            borderRadius: 8,
+                            borderRadiusLG: 10,
+                            fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif',
+                        },
+                        components: {
+                            Button: { controlHeight: 34, fontWeight: 500 },
+                            Card: { paddingLG: 20 },
+                            Table: { headerBg: '#fafafa', rowHoverBg: '#fafafa' },
+                            Menu: { itemBorderRadius: 7, itemHeight: 36 },
+                        },
+                    }}
+                >
                     <Helmet>
                         <title>{title}</title>
                     </Helmet>

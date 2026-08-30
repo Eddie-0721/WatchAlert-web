@@ -33,12 +33,27 @@ import { RecordingRuleIndex } from "../pages/alert/recordingRule";
 import { RecordingRuleCreatePage } from "../pages/alert/recordingRule/create";
 import { DataAnalysis } from "../pages/exploer";
 import { PrometheusServiceDiscovery } from "../pages/promethues/sd";
+import { AlertStream } from "../pages/alerts";
+import { Copilot } from "../pages/copilot";
+import { Manage } from "../pages/manage";
 
 // eslint-disable-next-line import/no-anonymous-default-export
 export default [
     {
         path: '/',
         element: <ComponentsContent name="off" c={<Home />} />,
+    },
+    {
+        path: '/alerts',
+        element: <ComponentsContent name="告警" c={<AlertStream />} />,
+    },
+    {
+        path: '/copilot',
+        element: <ComponentsContent name="off" c={<Copilot />} />,
+    },
+    {
+        path: '/manage',
+        element: <ComponentsContent name="Manage" c={<Manage />} />,
     },
     {
         path: '/login',

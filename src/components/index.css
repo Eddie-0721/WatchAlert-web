@@ -1,11 +1,34 @@
-.ant-select-selector {
-    border: none;
+.app-shell { min-height: 100vh; background: #fafafa; }
+
+.app-main-shell { min-width: 0; background: #fafafa; }
+
+.app-content {
+  min-height: calc(100vh - 29px);
+  padding: 32px 40px 44px;
+  overflow: auto;
 }
 
-.ant-card:active {
-    transform: scale(0.98); /* 轻微缩小卡片 */
-  }
+.app-content--flush { padding: 0; }
 
-.ant-menu-light.ant-menu-root.ant-menu-inline {
-    border-inline-end: none;
+.app-footer {
+  padding: 7px 40px 10px;
+  color: #a1a1aa;
+  font-size: 11px;
+  letter-spacing: .01em;
+}
+
+.app-state-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 16px;
+  background: #fafafa;
+  color: #71717a;
+}
+
+@media (max-width: 768px) {
+  .app-content { padding: 24px 18px 88px; }
+  .app-footer { display: none; }
 }

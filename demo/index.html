@@ -1,0 +1,894 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>WatchAlert UI Phase 1 Demo</title>
+  <meta http-equiv="refresh" content="0; url=vercel-sentry-ai.html">
+  <script>location.replace('vercel-sentry-ai.html')</script>
+  <style>
+    :root {
+      --wa-canvas: #f5f7fa;
+      --wa-surface: #ffffff;
+      --wa-surface-soft: #f8f9fc;
+      --wa-sidebar: #111827;
+      --wa-sidebar-hover: #1d2637;
+      --wa-sidebar-text: #aeb7c7;
+      --wa-text: #1c2536;
+      --wa-text-secondary: #667085;
+      --wa-text-tertiary: #98a2b3;
+      --wa-border: #e5e9f0;
+      --wa-primary: #5b5bd6;
+      --wa-primary-soft: #eeeeff;
+      --wa-critical: #d84f5f;
+      --wa-critical-soft: #fff0f2;
+      --wa-warning: #d38b27;
+      --wa-warning-soft: #fff6e8;
+      --wa-success: #268f69;
+      --wa-success-soft: #eaf8f2;
+      --wa-info: #3975c6;
+      --wa-shadow: 0 10px 32px rgba(20, 30, 50, .08);
+      --wa-radius: 14px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-width: 320px;
+      min-height: 100vh;
+      color: var(--wa-text);
+      font-family: Inter, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+      background: var(--wa-canvas);
+    }
+
+    button, input, select, textarea { font: inherit; }
+    button { cursor: pointer; }
+    svg { display: block; }
+
+    .app {
+      display: grid;
+      grid-template-columns: 220px minmax(0, 1fr);
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      position: sticky;
+      top: 0;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      padding: 20px 14px 14px;
+      color: var(--wa-sidebar-text);
+      background: var(--wa-sidebar);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      height: 42px;
+      padding: 0 10px;
+      color: #ffffff;
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: -.01em;
+    }
+
+    .brand-mark {
+      display: grid;
+      place-items: center;
+      width: 30px;
+      height: 30px;
+      border-radius: 9px;
+      color: #ffffff;
+      background: var(--wa-primary);
+    }
+
+    .nav-section { margin-top: 24px; }
+
+    .nav-label {
+      padding: 0 10px 8px;
+      color: #697386;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .11em;
+      text-transform: uppercase;
+    }
+
+    .nav-list { display: grid; gap: 4px; }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      min-height: 41px;
+      padding: 0 11px;
+      border: 0;
+      border-radius: 9px;
+      color: var(--wa-sidebar-text);
+      text-align: left;
+      background: transparent;
+      transition: background .15s ease, color .15s ease;
+    }
+
+    .nav-item:hover { color: #ffffff; background: var(--wa-sidebar-hover); }
+    .nav-item.active { color: #ffffff; background: #292953; }
+    .nav-item .icon { width: 17px; height: 17px; }
+    .nav-item .coming { margin-left: auto; color: #778198; font-size: 10px; }
+
+    .tenant-card {
+      margin-top: auto;
+      padding: 12px;
+      border: 1px solid #2b3547;
+      border-radius: 10px;
+      background: #182131;
+    }
+
+    .tenant-label { color: #778198; font-size: 10px; }
+    .tenant-name { margin-top: 5px; color: #f4f6fa; font-size: 12px; }
+    .tenant-meta { margin-top: 5px; color: #8791a3; font-size: 10px; }
+
+    .main { min-width: 0; }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 64px;
+      padding: 0 28px;
+      border-bottom: 1px solid var(--wa-border);
+      background: rgba(255, 255, 255, .92);
+      backdrop-filter: blur(14px);
+    }
+
+    .system-state, .top-actions, .health-label {
+      display: flex;
+      align-items: center;
+    }
+
+    .system-state { gap: 9px; color: var(--wa-text-secondary); font-size: 12px; }
+    .health-label { gap: 6px; }
+
+    .health-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--wa-success);
+      box-shadow: 0 0 0 4px var(--wa-success-soft);
+    }
+
+    .top-actions { gap: 8px; }
+
+    .icon-button, .secondary-button, .primary-button, .danger-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      min-height: 36px;
+      padding: 0 12px;
+      border: 1px solid var(--wa-border);
+      border-radius: 9px;
+      color: var(--wa-text-secondary);
+      background: var(--wa-surface);
+    }
+
+    .icon-button { width: 36px; padding: 0; }
+    .icon-button:hover, .secondary-button:hover { color: var(--wa-text); border-color: #ccd3df; background: var(--wa-surface-soft); }
+    .primary-button { color: #ffffff; border-color: var(--wa-primary); background: var(--wa-primary); }
+    .primary-button:hover { background: #4e4ec1; }
+    .danger-button { color: var(--wa-critical); border-color: #f0bdc4; background: var(--wa-critical-soft); }
+
+    .mobile-nav { display: none; }
+
+    .page {
+      display: none;
+      max-width: 1480px;
+      margin: 0 auto;
+      padding: 28px;
+    }
+
+    .page.active { display: block; }
+
+    .page-head {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 20px;
+      margin-bottom: 22px;
+    }
+
+    h1, h2, h3, p { margin: 0; }
+    h1 { font-size: 24px; font-weight: 600; letter-spacing: -.035em; }
+    h2 { font-size: 15px; font-weight: 600; }
+    h3 { font-size: 13px; font-weight: 600; }
+
+    .page-description {
+      margin-top: 6px;
+      color: var(--wa-text-secondary);
+      font-size: 12px;
+    }
+
+    .range-label { color: var(--wa-text-tertiary); font-size: 11px; }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .metric, .panel, .detail-card {
+      border: 1px solid var(--wa-border);
+      border-radius: var(--wa-radius);
+      background: var(--wa-surface);
+    }
+
+    .metric { padding: 16px; }
+    .metric-label { color: var(--wa-text-secondary); font-size: 11px; }
+    .metric-value { margin-top: 8px; font-size: 26px; font-weight: 600; letter-spacing: -.04em; }
+    .metric-note { margin-top: 5px; color: var(--wa-text-tertiary); font-size: 10px; }
+    .metric-note.bad { color: var(--wa-critical); }
+
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.6fr) minmax(260px, .7fr);
+      gap: 14px;
+    }
+
+    .panel { overflow: hidden; }
+
+    .panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--wa-border);
+    }
+
+    .quiet-action {
+      padding: 0;
+      border: 0;
+      color: var(--wa-primary);
+      font-size: 11px;
+      background: transparent;
+    }
+
+    .trend-wrap { padding: 18px 18px 14px; }
+    .trend-legend { display: flex; gap: 18px; margin-bottom: 16px; color: var(--wa-text-secondary); font-size: 10px; }
+    .legend-item { display: flex; align-items: center; gap: 6px; }
+    .legend-dot { width: 7px; height: 7px; border-radius: 50%; }
+    .legend-dot.p0 { background: var(--wa-critical); }
+    .legend-dot.p1 { background: var(--wa-warning); }
+    .legend-dot.recovered { background: var(--wa-success); }
+    .trend-chart { width: 100%; height: 230px; }
+    .chart-grid { stroke: #edf0f5; stroke-width: 1; }
+    .chart-label { fill: var(--wa-text-tertiary); font-size: 10px; }
+    .chart-line { fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .chart-line.p0 { stroke: var(--wa-critical); }
+    .chart-line.p1 { stroke: var(--wa-warning); }
+    .chart-line.recovered { stroke: var(--wa-success); }
+
+    .recent-list { display: grid; }
+
+    .recent-row {
+      display: grid;
+      grid-template-columns: 8px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 11px;
+      min-height: 66px;
+      padding: 10px 18px;
+      border-bottom: 1px solid var(--wa-border);
+      cursor: pointer;
+    }
+
+    .recent-row:last-child { border-bottom: 0; }
+    .recent-row:hover { background: var(--wa-surface-soft); }
+
+    .severity-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .severity-dot.P0 { background: var(--wa-critical); }
+    .severity-dot.P1 { background: var(--wa-warning); }
+    .severity-dot.P2 { background: var(--wa-info); }
+    .alert-name { overflow: hidden; font-size: 12px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+    .alert-meta { margin-top: 4px; color: var(--wa-text-tertiary); font-size: 10px; }
+    .alert-duration { color: var(--wa-text-tertiary); font-size: 10px; }
+
+    .insight {
+      padding: 18px;
+      background: linear-gradient(145deg, #f8f7ff 0%, #ffffff 62%);
+    }
+
+    .insight-title { display: flex; align-items: center; gap: 8px; color: var(--wa-primary); }
+    .insight-text { margin-top: 18px; font-size: 13px; line-height: 1.7; }
+    .insight-evidence { display: grid; gap: 9px; margin-top: 18px; }
+    .insight-evidence div { padding-left: 10px; border-left: 2px solid #d9d9fb; color: var(--wa-text-secondary); font-size: 11px; line-height: 1.45; }
+    .insight-footer { margin-top: 20px; color: var(--wa-text-tertiary); font-size: 10px; }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .filters { display: flex; flex-wrap: wrap; gap: 8px; }
+
+    .field, .select-field {
+      min-height: 36px;
+      border: 1px solid var(--wa-border);
+      border-radius: 9px;
+      color: var(--wa-text);
+      background: var(--wa-surface);
+    }
+
+    .field { width: 260px; padding: 0 12px; }
+    .select-field { padding: 0 30px 0 10px; }
+    .field:focus, .select-field:focus { outline: 2px solid #ddddff; border-color: var(--wa-primary); }
+
+    .alert-table { width: 100%; border-collapse: collapse; }
+    .alert-table th, .alert-table td { padding: 13px 16px; text-align: left; border-bottom: 1px solid var(--wa-border); }
+    .alert-table th { color: var(--wa-text-tertiary); font-size: 10px; font-weight: 600; background: var(--wa-surface-soft); }
+    .alert-table td { color: var(--wa-text-secondary); font-size: 11px; }
+    .alert-table tbody tr { cursor: pointer; }
+    .alert-table tbody tr:hover { background: #fafbfe; }
+    .alert-table tbody tr:last-child td { border-bottom: 0; }
+    .table-alert { color: var(--wa-text); font-weight: 600; }
+
+    .severity-pill, .status-pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 22px;
+      padding: 0 8px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 600;
+    }
+
+    .severity-pill.P0 { color: var(--wa-critical); background: var(--wa-critical-soft); }
+    .severity-pill.P1 { color: var(--wa-warning); background: var(--wa-warning-soft); }
+    .severity-pill.P2 { color: var(--wa-info); background: #edf5ff; }
+    .status-pill.unclaimed { color: var(--wa-critical); background: var(--wa-critical-soft); }
+    .status-pill.processing { color: var(--wa-info); background: #edf5ff; }
+    .status-pill.silenced { color: var(--wa-text-secondary); background: #f0f2f5; }
+
+    .table-empty { padding: 56px 20px; color: var(--wa-text-tertiary); text-align: center; font-size: 12px; }
+
+    .detail-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 20px;
+      margin-bottom: 18px;
+    }
+
+    .back-button {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 14px;
+      padding: 0;
+      border: 0;
+      color: var(--wa-text-secondary);
+      font-size: 11px;
+      background: transparent;
+    }
+
+    .detail-title-line { display: flex; align-items: center; flex-wrap: wrap; gap: 9px; }
+    .detail-title-line h1 { font-size: 21px; }
+    .detail-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.55fr) minmax(280px, .65fr);
+      gap: 14px;
+    }
+
+    .detail-card { padding: 18px; }
+    .detail-card + .detail-card { margin-top: 14px; }
+    .detail-card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+
+    .facts {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 0;
+      border: 1px solid var(--wa-border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .fact { min-height: 74px; padding: 13px; border-right: 1px solid var(--wa-border); background: var(--wa-surface-soft); }
+    .fact:last-child { border-right: 0; }
+    .fact-label { color: var(--wa-text-tertiary); font-size: 10px; }
+    .fact-value { margin-top: 7px; color: var(--wa-text); font-size: 12px; font-weight: 600; }
+
+    .labels { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 15px; }
+    .label-chip { padding: 5px 8px; border: 1px solid var(--wa-border); border-radius: 7px; color: var(--wa-text-secondary); font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 10px; background: #fbfcfe; }
+
+    .evidence-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+    .evidence-card { padding: 13px; border: 1px solid var(--wa-border); border-radius: 10px; background: var(--wa-surface-soft); }
+    .evidence-card-title { display: flex; align-items: center; gap: 7px; color: var(--wa-text); font-size: 11px; font-weight: 600; }
+    .evidence-value { margin-top: 11px; font-size: 20px; font-weight: 600; letter-spacing: -.03em; }
+    .evidence-note { margin-top: 5px; color: var(--wa-text-tertiary); font-size: 10px; line-height: 1.4; }
+
+    .timeline { position: relative; display: grid; gap: 0; }
+    .timeline-item { position: relative; display: grid; grid-template-columns: 64px 14px minmax(0, 1fr); gap: 10px; min-height: 68px; }
+    .timeline-time { padding-top: 1px; color: var(--wa-text-tertiary); font-size: 10px; text-align: right; }
+    .timeline-rail { position: relative; }
+    .timeline-rail::before { position: absolute; top: 4px; bottom: -4px; left: 6px; width: 1px; background: var(--wa-border); content: ""; }
+    .timeline-item:last-child .timeline-rail::before { display: none; }
+    .timeline-dot { position: relative; z-index: 1; width: 13px; height: 13px; border: 3px solid var(--wa-surface); border-radius: 50%; background: var(--wa-primary); box-shadow: 0 0 0 1px #cfcff5; }
+    .timeline-content { padding-bottom: 18px; }
+    .timeline-title { font-size: 11px; font-weight: 600; }
+    .timeline-text { margin-top: 5px; color: var(--wa-text-secondary); font-size: 10px; line-height: 1.5; }
+
+    .comment-box { width: 100%; min-height: 82px; padding: 10px 12px; resize: vertical; border: 1px solid var(--wa-border); border-radius: 9px; color: var(--wa-text); background: var(--wa-surface-soft); }
+    .comment-actions { display: flex; justify-content: flex-end; margin-top: 8px; }
+
+    .toast {
+      position: fixed;
+      right: 24px;
+      bottom: 24px;
+      z-index: 30;
+      max-width: 340px;
+      padding: 12px 14px;
+      border: 1px solid #cce9dd;
+      border-radius: 10px;
+      color: #176a4b;
+      font-size: 11px;
+      background: #f0fbf6;
+      box-shadow: var(--wa-shadow);
+      opacity: 0;
+      transform: translateY(8px);
+      pointer-events: none;
+      transition: opacity .18s ease, transform .18s ease;
+    }
+
+    .toast.show { opacity: 1; transform: translateY(0); }
+
+    @media (max-width: 1050px) {
+      .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .dashboard-grid, .detail-grid { grid-template-columns: 1fr; }
+      .facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .fact:nth-child(2) { border-right: 0; }
+      .fact:nth-child(-n+2) { border-bottom: 1px solid var(--wa-border); }
+      .alert-table th:nth-child(5), .alert-table td:nth-child(5) { display: none; }
+    }
+
+    @media (max-width: 760px) {
+      .app { grid-template-columns: 1fr; }
+      .sidebar { display: none; }
+      .topbar { padding: 0 16px; }
+      .mobile-nav {
+        display: flex;
+        gap: 6px;
+        padding: 9px 14px;
+        overflow-x: auto;
+        border-bottom: 1px solid var(--wa-border);
+        background: var(--wa-surface);
+      }
+      .mobile-nav button {
+        min-height: 34px;
+        padding: 0 11px;
+        border: 0;
+        border-radius: 8px;
+        color: var(--wa-text-secondary);
+        white-space: nowrap;
+        background: transparent;
+      }
+      .mobile-nav button.active { color: var(--wa-primary); background: var(--wa-primary-soft); }
+      .page { padding: 20px 14px; }
+      .page-head, .detail-head, .toolbar { align-items: flex-start; flex-direction: column; }
+      .filters { width: 100%; }
+      .field { width: 100%; }
+      .table-wrap { overflow-x: auto; }
+      .alert-table { min-width: 720px; }
+      .evidence-grid { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 460px) {
+      .metrics { grid-template-columns: 1fr; }
+      .top-actions .secondary-button { display: none; }
+      .facts { grid-template-columns: 1fr; }
+      .fact { border-right: 0; border-bottom: 1px solid var(--wa-border); }
+      .fact:last-child { border-bottom: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-mark"><i data-lucide="activity"></i></span>
+        WatchAlert
+      </div>
+
+      <section class="nav-section">
+        <div class="nav-label">工作台</div>
+        <nav class="nav-list">
+          <button class="nav-item active" data-route="overview"><i class="icon" data-lucide="layout-dashboard"></i>告警总览</button>
+          <button class="nav-item" data-route="alerts"><i class="icon" data-lucide="siren"></i>告警中心</button>
+          <button class="nav-item" data-placeholder="监控规则"><i class="icon" data-lucide="radar"></i>监控规则</button>
+          <button class="nav-item" data-placeholder="AI 助手"><i class="icon" data-lucide="sparkles"></i>AI 助手<span class="coming">下一阶段</span></button>
+        </nav>
+      </section>
+
+      <section class="nav-section">
+        <div class="nav-label">管理</div>
+        <nav class="nav-list">
+          <button class="nav-item" data-placeholder="数据源"><i class="icon" data-lucide="database"></i>数据源</button>
+          <button class="nav-item" data-placeholder="通知与值班"><i class="icon" data-lucide="send"></i>通知与值班</button>
+          <button class="nav-item" data-placeholder="团队与权限"><i class="icon" data-lucide="users"></i>团队与权限</button>
+          <button class="nav-item" data-placeholder="系统设置"><i class="icon" data-lucide="settings"></i>系统设置</button>
+        </nav>
+      </section>
+
+      <div class="tenant-card">
+        <div class="tenant-label">当前租户</div>
+        <div class="tenant-name">电商生产环境</div>
+        <div class="tenant-meta">production · 华东一区</div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="system-state"><span class="health-dot"></span>系统运行正常</div>
+        <div class="top-actions">
+          <button class="icon-button" aria-label="搜索"><i data-lucide="search"></i></button>
+          <button class="icon-button" aria-label="通知"><i data-lucide="bell"></i></button>
+          <button class="secondary-button" data-placeholder="AI 助手"><i data-lucide="sparkles"></i>询问 AI</button>
+        </div>
+      </header>
+
+      <nav class="mobile-nav">
+        <button class="active" data-route="overview">告警总览</button>
+        <button data-route="alerts">告警中心</button>
+        <button data-placeholder="监控规则">监控规则</button>
+        <button data-placeholder="AI 助手">AI 助手</button>
+      </nav>
+
+      <section class="page active" id="page-overview">
+        <div class="page-head">
+          <div>
+            <h1>告警总览</h1>
+            <p class="page-description">聚焦当前异常、响应效率与系统健康状态。</p>
+          </div>
+          <span class="range-label">最近 24 小时 · 10:42 更新</span>
+        </div>
+
+        <div class="metrics">
+          <article class="metric"><div class="metric-label">当前告警</div><div class="metric-value">18</div><div class="metric-note bad">3 条需要立即处理</div></article>
+          <article class="metric"><div class="metric-label">今日恢复</div><div class="metric-value">42</div><div class="metric-note">平均恢复时间 16 分钟</div></article>
+          <article class="metric"><div class="metric-label">通知成功率</div><div class="metric-value">99.8%</div><div class="metric-note">共发送 586 次</div></article>
+          <article class="metric"><div class="metric-label">数据源状态</div><div class="metric-value">12/13</div><div class="metric-note bad">1 个查询延迟升高</div></article>
+        </div>
+
+        <div class="dashboard-grid">
+          <section class="panel">
+            <div class="panel-head"><h2>告警趋势</h2><button class="quiet-action" data-route="alerts">查看全部告警</button></div>
+            <div class="trend-wrap">
+              <div class="trend-legend">
+                <span class="legend-item"><span class="legend-dot p0"></span>P0</span>
+                <span class="legend-item"><span class="legend-dot p1"></span>P1</span>
+                <span class="legend-item"><span class="legend-dot recovered"></span>已恢复</span>
+              </div>
+              <svg class="trend-chart" viewBox="0 0 720 230" role="img" aria-label="最近 24 小时告警趋势">
+                <line class="chart-grid" x1="40" y1="25" x2="700" y2="25"></line>
+                <line class="chart-grid" x1="40" y1="75" x2="700" y2="75"></line>
+                <line class="chart-grid" x1="40" y1="125" x2="700" y2="125"></line>
+                <line class="chart-grid" x1="40" y1="175" x2="700" y2="175"></line>
+                <text class="chart-label" x="8" y="29">30</text>
+                <text class="chart-label" x="8" y="79">20</text>
+                <text class="chart-label" x="8" y="129">10</text>
+                <text class="chart-label" x="18" y="179">0</text>
+                <text class="chart-label" x="40" y="212">00:00</text>
+                <text class="chart-label" x="190" y="212">06:00</text>
+                <text class="chart-label" x="355" y="212">12:00</text>
+                <text class="chart-label" x="520" y="212">18:00</text>
+                <text class="chart-label" x="664" y="212">现在</text>
+                <path class="chart-line recovered" d="M40 134 C92 119 126 128 165 103 S245 91 290 115 S372 79 420 89 S499 118 540 95 S630 61 700 75"></path>
+                <path class="chart-line p1" d="M40 158 C95 152 130 140 165 149 S242 127 290 138 S370 119 420 132 S495 104 540 118 S630 91 700 105"></path>
+                <path class="chart-line p0" d="M40 172 C98 171 130 164 165 168 S244 153 290 163 S368 147 420 155 S492 139 540 149 S625 126 700 137"></path>
+              </svg>
+            </div>
+          </section>
+
+          <aside class="panel insight">
+            <h2 class="insight-title"><i data-lucide="sparkles"></i>今日洞察</h2>
+            <p class="insight-text">订单服务的 3 条告警很可能属于同一故障：数据库连接池耗尽导致接口错误率与延迟同步升高。</p>
+            <div class="insight-evidence">
+              <div>错误率从 0.4% 升至 6.8%</div>
+              <div>连接池等待时间增加 4.2 倍</div>
+              <div>异常前 6 分钟存在版本发布</div>
+            </div>
+            <div class="insight-footer">AI 深度对话将在第二阶段接入。</div>
+          </aside>
+        </div>
+
+        <section class="panel" style="margin-top:14px">
+          <div class="panel-head"><h2>最近活跃告警</h2><button class="quiet-action" data-route="alerts">进入告警中心</button></div>
+          <div class="recent-list" id="recent-alerts"></div>
+        </section>
+      </section>
+
+      <section class="page" id="page-alerts">
+        <div class="page-head">
+          <div>
+            <h1>告警中心</h1>
+            <p class="page-description">统一查看、筛选和处置当前租户的活跃告警。</p>
+          </div>
+          <button class="secondary-button" id="refresh-alerts"><i data-lucide="refresh-cw"></i>刷新</button>
+        </div>
+
+        <div class="toolbar">
+          <div class="filters">
+            <input class="field" id="alert-search" placeholder="搜索告警名称、服务或实例">
+            <select class="select-field" id="severity-filter" aria-label="告警级别">
+              <option value="">全部级别</option>
+              <option value="P0">P0</option>
+              <option value="P1">P1</option>
+              <option value="P2">P2</option>
+            </select>
+            <select class="select-field" id="status-filter" aria-label="处理状态">
+              <option value="">全部状态</option>
+              <option value="未认领">未认领</option>
+              <option value="处理中">处理中</option>
+              <option value="已静默">已静默</option>
+            </select>
+          </div>
+          <span class="range-label" id="alert-count">共 0 条</span>
+        </div>
+
+        <section class="panel table-wrap">
+          <table class="alert-table">
+            <thead>
+              <tr>
+                <th>级别</th>
+                <th>告警</th>
+                <th>状态</th>
+                <th>故障中心</th>
+                <th>负责人</th>
+                <th>持续时间</th>
+              </tr>
+            </thead>
+            <tbody id="alert-table-body"></tbody>
+          </table>
+          <div class="table-empty" id="table-empty" hidden>没有符合当前条件的告警</div>
+        </section>
+      </section>
+
+      <section class="page" id="page-detail">
+        <button class="back-button" data-route="alerts"><i data-lucide="arrow-left"></i>返回告警中心</button>
+        <div class="detail-head">
+          <div>
+            <div class="detail-title-line">
+              <span class="severity-pill P0" id="detail-severity">P0</span>
+              <h1 id="detail-title">告警详情</h1>
+              <span class="status-pill unclaimed" id="detail-status">未认领</span>
+            </div>
+            <p class="page-description" id="detail-subtitle"></p>
+          </div>
+          <div class="detail-actions">
+            <button class="secondary-button" id="silence-alert"><i data-lucide="bell-off"></i>静默</button>
+            <button class="primary-button" id="ack-alert"><i data-lucide="hand"></i>认领告警</button>
+          </div>
+        </div>
+
+        <div class="detail-grid">
+          <div>
+            <section class="detail-card">
+              <div class="detail-card-head"><h2>事件概览</h2><span class="range-label" id="detail-event-id"></span></div>
+              <div class="facts">
+                <div class="fact"><div class="fact-label">首次触发</div><div class="fact-value" id="detail-triggered"></div></div>
+                <div class="fact"><div class="fact-label">持续时间</div><div class="fact-value" id="detail-duration"></div></div>
+                <div class="fact"><div class="fact-label">数据源</div><div class="fact-value" id="detail-source"></div></div>
+                <div class="fact"><div class="fact-label">负责人</div><div class="fact-value" id="detail-owner"></div></div>
+              </div>
+              <div class="labels" id="detail-labels"></div>
+            </section>
+
+            <section class="detail-card">
+              <div class="detail-card-head"><h2>关联证据</h2><button class="quiet-action" data-placeholder="数据分析">打开数据分析</button></div>
+              <div class="evidence-grid">
+                <div class="evidence-card"><div class="evidence-card-title"><i data-lucide="chart-no-axes-combined"></i>指标异常</div><div class="evidence-value">6.8%</div><div class="evidence-note">HTTP 5xx 错误率，基线为 0.4%</div></div>
+                <div class="evidence-card"><div class="evidence-card-title"><i data-lucide="scroll-text"></i>异常日志</div><div class="evidence-value">1,248</div><div class="evidence-note">connection pool timeout / 20 分钟</div></div>
+                <div class="evidence-card"><div class="evidence-card-title"><i data-lucide="route"></i>慢链路</div><div class="evidence-value">83%</div><div class="evidence-note">集中在 inventory.reserve 调用</div></div>
+              </div>
+            </section>
+
+            <section class="detail-card">
+              <div class="detail-card-head"><h2>事件时间线</h2></div>
+              <div class="timeline">
+                <div class="timeline-item"><div class="timeline-time">10:24</div><div class="timeline-rail"><span class="timeline-dot"></span></div><div class="timeline-content"><div class="timeline-title">告警触发</div><div class="timeline-text">错误率连续 5 分钟超过 5%，事件进入告警状态。</div></div></div>
+                <div class="timeline-item"><div class="timeline-time">10:25</div><div class="timeline-rail"><span class="timeline-dot"></span></div><div class="timeline-content"><div class="timeline-title">通知已发送</div><div class="timeline-text">飞书通知发送至「交易值班群」，电话升级计时开始。</div></div></div>
+                <div class="timeline-item"><div class="timeline-time">10:31</div><div class="timeline-rail"><span class="timeline-dot"></span></div><div class="timeline-content"><div class="timeline-title">关联到版本变更</div><div class="timeline-text">检测到 order-api v2.18.4 于告警前 6 分钟发布。</div></div></div>
+                <div class="timeline-item" id="ack-timeline" hidden><div class="timeline-time">现在</div><div class="timeline-rail"><span class="timeline-dot"></span></div><div class="timeline-content"><div class="timeline-title">告警已认领</div><div class="timeline-text">当前用户开始处理该事件。</div></div></div>
+              </div>
+            </section>
+          </div>
+
+          <aside>
+            <section class="detail-card">
+              <div class="detail-card-head"><h2>处理建议</h2><span class="range-label">规则预案</span></div>
+              <div class="timeline">
+                <div class="timeline-item"><div class="timeline-time">1</div><div class="timeline-rail"><span class="timeline-dot"></span></div><div class="timeline-content"><div class="timeline-title">确认数据库连接池</div><div class="timeline-text">检查 active、waiting 和 max connections。</div></div></div>
+                <div class="timeline-item"><div class="timeline-time">2</div><div class="timeline-rail"><span class="timeline-dot"></span></div><div class="timeline-content"><div class="timeline-title">对比最近发布</div><div class="timeline-text">检查 v2.18.4 的查询并发和事务改动。</div></div></div>
+                <div class="timeline-item"><div class="timeline-time">3</div><div class="timeline-rail"><span class="timeline-dot"></span></div><div class="timeline-content"><div class="timeline-title">执行止损</div><div class="timeline-text">必要时回滚版本或临时降低请求并发。</div></div></div>
+              </div>
+            </section>
+
+            <section class="detail-card">
+              <div class="detail-card-head"><h2>添加处理记录</h2></div>
+              <textarea class="comment-box" id="comment-input" placeholder="记录排查进展、结论或交接信息"></textarea>
+              <div class="comment-actions"><button class="secondary-button" id="submit-comment">提交记录</button></div>
+            </section>
+          </aside>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
+  <script>
+    const alerts = [
+      { id: "evt-8a20", severity: "P0", name: "订单服务错误率持续升高", service: "order-api", instance: "order-api-7dfc8", status: "未认领", center: "交易核心", owner: "未分配", duration: "18 分钟", triggered: "2026-08-29 10:24", source: "Prometheus", labels: ["env=production", "namespace=commerce", "service=order-api"] },
+      { id: "evt-719e", severity: "P0", name: "MySQL 主库连接数接近上限", service: "mysql-primary", instance: "10.10.8.21:3306", status: "处理中", center: "交易核心", owner: "林远", duration: "31 分钟", triggered: "2026-08-29 10:11", source: "Prometheus", labels: ["env=production", "cluster=mysql-order", "role=primary"] },
+      { id: "evt-142c", severity: "P1", name: "支付服务 P99 延迟异常", service: "payment-api", instance: "payment-api-59bdf", status: "未认领", center: "支付链路", owner: "未分配", duration: "9 分钟", triggered: "2026-08-29 10:33", source: "Prometheus", labels: ["env=production", "namespace=payment", "service=payment-api"] },
+      { id: "evt-6b11", severity: "P1", name: "Kubernetes Pod 重启频繁", service: "checkout", instance: "checkout-6ff4c", status: "已静默", center: "应用基础设施", owner: "周澄", duration: "44 分钟", triggered: "2026-08-29 09:58", source: "Kubernetes Event", labels: ["env=production", "namespace=commerce", "reason=CrashLoopBackOff"] },
+      { id: "evt-321f", severity: "P2", name: "SSL 证书将在 14 天后过期", service: "api.example.com", instance: "api.example.com:443", status: "处理中", center: "网络与证书", owner: "陈序", duration: "2 小时", triggered: "2026-08-29 08:42", source: "SSL Probe", labels: ["env=production", "domain=api.example.com", "region=cn-east"] },
+      { id: "evt-5ac4", severity: "P1", name: "Loki 日志写入延迟升高", service: "loki-write", instance: "loki-write-2", status: "未认领", center: "可观测平台", owner: "未分配", duration: "26 分钟", triggered: "2026-08-29 10:16", source: "Prometheus", labels: ["env=production", "cluster=observability", "service=loki"] }
+    ];
+
+    const routeButtons = Array.from(document.querySelectorAll("[data-route]"));
+    const navItems = Array.from(document.querySelectorAll(".nav-item[data-route], .mobile-nav [data-route]"));
+    const pages = Array.from(document.querySelectorAll(".page"));
+    let currentAlert = alerts[0];
+    let toastTimer;
+
+    function iconRefresh() {
+      if (window.lucide) {
+        window.lucide.createIcons({ attrs: { width: 16, height: 16, "stroke-width": 1.8 } });
+      }
+    }
+
+    function showToast(text) {
+      const toast = document.getElementById("toast");
+      toast.textContent = text;
+      toast.classList.add("show");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(function () { toast.classList.remove("show"); }, 2200);
+    }
+
+    function setRoute(route) {
+      pages.forEach(function (page) { page.classList.toggle("active", page.id === "page-" + route); });
+      navItems.forEach(function (item) { item.classList.toggle("active", item.dataset.route === route || (route === "detail" && item.dataset.route === "alerts")); });
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function statusClass(status) {
+      if (status === "处理中") return "processing";
+      if (status === "已静默") return "silenced";
+      return "unclaimed";
+    }
+
+    function renderRecent() {
+      const root = document.getElementById("recent-alerts");
+      root.innerHTML = "";
+      alerts.slice(0, 4).forEach(function (alert) {
+        const row = document.createElement("div");
+        row.className = "recent-row";
+        row.innerHTML =
+          '<span class="severity-dot ' + alert.severity + '"></span>' +
+          '<div><div class="alert-name">' + alert.name + '</div><div class="alert-meta">' + alert.service + ' · ' + alert.instance + '</div></div>' +
+          '<span class="alert-duration">持续 ' + alert.duration + '</span>';
+        row.addEventListener("click", function () { openDetail(alert.id); });
+        root.appendChild(row);
+      });
+    }
+
+    function renderTable() {
+      const query = document.getElementById("alert-search").value.trim().toLowerCase();
+      const severity = document.getElementById("severity-filter").value;
+      const status = document.getElementById("status-filter").value;
+      const filtered = alerts.filter(function (alert) {
+        const text = (alert.name + " " + alert.service + " " + alert.instance).toLowerCase();
+        return (!query || text.includes(query)) && (!severity || alert.severity === severity) && (!status || alert.status === status);
+      });
+
+      const body = document.getElementById("alert-table-body");
+      body.innerHTML = "";
+      filtered.forEach(function (alert) {
+        const row = document.createElement("tr");
+        row.innerHTML =
+          '<td><span class="severity-pill ' + alert.severity + '">' + alert.severity + '</span></td>' +
+          '<td><div class="table-alert">' + alert.name + '</div><div class="alert-meta">' + alert.service + ' · ' + alert.instance + '</div></td>' +
+          '<td><span class="status-pill ' + statusClass(alert.status) + '">' + alert.status + '</span></td>' +
+          '<td>' + alert.center + '</td>' +
+          '<td>' + alert.owner + '</td>' +
+          '<td>持续 ' + alert.duration + '</td>';
+        row.addEventListener("click", function () { openDetail(alert.id); });
+        body.appendChild(row);
+      });
+
+      document.getElementById("alert-count").textContent = "共 " + filtered.length + " 条";
+      document.getElementById("table-empty").hidden = filtered.length !== 0;
+    }
+
+    function openDetail(id) {
+      currentAlert = alerts.find(function (alert) { return alert.id === id; }) || alerts[0];
+      document.getElementById("detail-severity").className = "severity-pill " + currentAlert.severity;
+      document.getElementById("detail-severity").textContent = currentAlert.severity;
+      document.getElementById("detail-title").textContent = currentAlert.name;
+      document.getElementById("detail-status").className = "status-pill " + statusClass(currentAlert.status);
+      document.getElementById("detail-status").textContent = currentAlert.status;
+      document.getElementById("detail-subtitle").textContent = currentAlert.service + " · " + currentAlert.instance + " · " + currentAlert.center;
+      document.getElementById("detail-event-id").textContent = currentAlert.id;
+      document.getElementById("detail-triggered").textContent = currentAlert.triggered;
+      document.getElementById("detail-duration").textContent = currentAlert.duration;
+      document.getElementById("detail-source").textContent = currentAlert.source;
+      document.getElementById("detail-owner").textContent = currentAlert.owner;
+      document.getElementById("detail-labels").innerHTML = currentAlert.labels.map(function (label) { return '<span class="label-chip">' + label + '</span>'; }).join("");
+      document.getElementById("ack-timeline").hidden = currentAlert.status !== "处理中";
+      document.getElementById("ack-alert").style.display = currentAlert.status === "未认领" ? "inline-flex" : "none";
+      document.getElementById("silence-alert").textContent = currentAlert.status === "已静默" ? "取消静默" : "静默";
+      setRoute("detail");
+      iconRefresh();
+    }
+
+    routeButtons.forEach(function (button) {
+      button.addEventListener("click", function () { setRoute(button.dataset.route); });
+    });
+
+    document.querySelectorAll("[data-placeholder]").forEach(function (button) {
+      button.addEventListener("click", function () { showToast(button.dataset.placeholder + "将在后续阶段完善"); });
+    });
+
+    ["alert-search", "severity-filter", "status-filter"].forEach(function (id) {
+      document.getElementById(id).addEventListener("input", renderTable);
+      document.getElementById(id).addEventListener("change", renderTable);
+    });
+
+    document.getElementById("refresh-alerts").addEventListener("click", function () {
+      renderTable();
+      showToast("告警数据已刷新");
+    });
+
+    document.getElementById("ack-alert").addEventListener("click", function () {
+      currentAlert.status = "处理中";
+      currentAlert.owner = "当前用户";
+      openDetail(currentAlert.id);
+      renderTable();
+      renderRecent();
+      showToast("告警已认领，事件时间线已更新");
+    });
+
+    document.getElementById("silence-alert").addEventListener("click", function () {
+      currentAlert.status = currentAlert.status === "已静默" ? "未认领" : "已静默";
+      openDetail(currentAlert.id);
+      renderTable();
+      showToast(currentAlert.status === "已静默" ? "告警已静默" : "已取消静默");
+    });
+
+    document.getElementById("submit-comment").addEventListener("click", function () {
+      const input = document.getElementById("comment-input");
+      if (!input.value.trim()) {
+        showToast("请先填写处理记录");
+        return;
+      }
+      input.value = "";
+      showToast("处理记录已保存");
+    });
+
+    renderRecent();
+    renderTable();
+    iconRefresh();
+  </script>
+</body>
+</html>

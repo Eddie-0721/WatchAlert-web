@@ -1,0 +1,89 @@
+.wa-sider {
+  position: sticky;
+  top: 0;
+  width: 232px;
+  height: 100vh;
+  flex: 0 0 232px;
+  display: flex;
+  flex-direction: column;
+  padding: 18px 12px;
+  background: #fff;
+  border-right: 1px solid #e4e4e7;
+  z-index: 10;
+}
+
+.wa-sider--loading { align-items: center; justify-content: center; }
+
+.wa-sider-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 8px 20px;
+  color: #18181b;
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: -.03em;
+  cursor: pointer;
+}
+
+.wa-sider-mark { width: 26px; height: 26px; display: grid; place-items: center; border-radius: 7px; background: #18181b; color: #fff; }
+
+.wa-workspace-switcher {
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px;
+  border: 1px solid #e4e4e7;
+  border-radius: 8px;
+  background: #fff;
+  color: #18181b;
+  text-align: left;
+}
+
+.wa-workspace-switcher:hover { background: #fafafa; }
+.wa-workspace-avatar { width: 26px; height: 26px; flex: 0 0 26px; display: grid; place-items: center; border-radius: 6px; background: linear-gradient(135deg, #18181b, #52525b); color: #fff; font-size: 10px; font-weight: 600; }
+.wa-workspace-copy { min-width: 0; flex: 1; }
+.wa-workspace-copy strong, .wa-workspace-copy small { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.wa-workspace-copy strong { font-size: 12px; font-weight: 550; }
+.wa-workspace-copy small { margin-top: 1px; color: #a1a1aa; font-size: 10px; }
+
+.wa-navigation { flex: 1; min-height: 0; overflow-y: auto; margin-top: 12px; padding-right: 2px; }
+.wa-nav-group { margin: 12px 0 18px; }
+.wa-nav-label { margin: 0 10px 6px; color: #a1a1aa; font-size: 10px; font-weight: 600; letter-spacing: .09em; }
+.wa-nav-item { position: relative; width: 100%; min-height: 36px; display: flex; align-items: center; gap: 10px; padding: 0 9px; border: 0; border-radius: 7px; background: transparent; color: #71717a; text-align: left; font-size: 13px; transition: background .15s ease, color .15s ease; }
+.wa-nav-item:hover { background: #f6f6f6; color: #18181b; }
+.wa-nav-item.is-active { background: #f4f4f5; color: #18181b; font-weight: 550; }
+.wa-nav-item.is-accent { color: #7c3aed; }
+.wa-nav-item.is-active.is-accent { background: #f5f3ff; color: #6d28d9; }
+.wa-nav-item b { margin-left: auto; min-width: 19px; padding: 1px 5px; border-radius: 999px; background: #fef2f2; color: #dc2626; font-size: 10px; text-align: center; }
+
+.wa-sider-bottom { position: relative; border-top: 1px solid #f0f0f1; padding-top: 8px; }
+.wa-nav-item--help svg:last-child { margin-left: auto; transition: transform .18s ease; }
+.wa-rotate { transform: rotate(90deg); }
+.wa-help-popover { display: flex; gap: 7px; align-items: center; margin: 5px 8px 9px; color: #71717a; font-size: 10px; }
+.wa-user-menu { width: 100%; display: flex; align-items: center; gap: 9px; padding: 8px; border: 0; border-radius: 7px; background: transparent; color: #18181b; text-align: left; }
+.wa-user-menu:hover { background: #f6f6f6; }
+.wa-user-menu > span:nth-child(2) { min-width: 0; flex: 1; }
+.wa-user-menu strong, .wa-user-menu small { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.wa-user-menu strong { font-size: 12px; font-weight: 550; }
+.wa-user-menu small { color: #a1a1aa; font-size: 10px; }
+
+@media (max-width: 900px) {
+  .wa-sider { width: 64px; flex-basis: 64px; padding: 18px 8px; align-items: center; }
+  .wa-sider-brand { padding: 0 0 18px; }
+  .wa-sider-brand > span:last-child, .wa-workspace-switcher, .wa-nav-label, .wa-nav-item span, .wa-nav-item b, .wa-sider-bottom { display: none; }
+  .wa-nav-item { width: 40px; justify-content: center; padding: 0; }
+  .wa-navigation { margin-top: 0; overflow: visible; }
+  .wa-nav-group { margin: 0 0 12px; }
+}
+
+@media (max-width: 600px) {
+  .wa-sider { position: fixed; inset: auto 0 0; width: 100%; height: 58px; padding: 7px 12px; flex-basis: auto; flex-direction: row; justify-content: center; border-right: 0; border-top: 1px solid #e4e4e7; background: rgba(255,255,255,.94); backdrop-filter: blur(16px); }
+  .wa-sider-brand { display: none; }
+  .wa-navigation { flex: 0; display: flex; gap: 12px; overflow: visible; }
+  .wa-nav-group { display: contents; }
+  .wa-nav-group:nth-of-type(n+2) { display: none; }
+  .wa-nav-item { width: 42px; height: 42px; }
+}
