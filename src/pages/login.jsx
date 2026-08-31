@@ -1,12 +1,10 @@
 'use client'
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import './global.css';
+import './login.css';
 import { checkUser, loginUser, registerUser, getOidcInfo } from '../api/user';
 import { message } from "antd";
 import { UserManager } from 'oidc-client';
-import logoIcon from "../img/health.svg";
 
 export const Login = () => {
     const [showOidcButtons, setShowOidcButtons] = useState(false);
@@ -133,113 +131,48 @@ export const Login = () => {
     }
 
     return (
-        <div className="min-h-screen flex bg-black text-white">
-            {/* 左侧插画区 */}
-            <div style={{ maxWidth: "60%" }}>
-                <img
-                    src={logoIcon}
-                    alt="WatchAlert Logo"
-                    style={{ height: "700px", borderRadius: "8px",  marginTop: "20px" }}
-                />
-            </div>
-
-            {/* 右侧登录区域 */}
-            <div className="w-full md:w-1/2 flex items-center justify-center px-6 py-12">
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5 }}
-                    className="bg-white text-black rounded-2xl shadow-xl w-full max-w-md p-8"
-                >
-                    <h1 className="text-2xl font-medium mb-2">欢迎回来</h1>
-                    <p className="text-gray-600 mb-8">请登录以继续使用 WatchAlert</p>
-                    
+        <main className="login-screen">
+            <section className="login-intro">
+                <div className="login-brand"><span className="login-brand__mark">W</span><span>WatchAlert</span></div>
+                <div className="login-intro__copy">
+                    <span className="login-kicker">OPERATIONS INTELLIGENCE</span>
+                    <h1>Keep every response<br />in one clear view.</h1>
+                    <p>Connect signals, coordinate ownership, and turn alerts into focused operational work.</p>
+                </div>
+                <div className="login-intro__status"><i /> System status · Operational</div>
+            </section>
+            <section className="login-entry">
+                <div className="login-card">
+                    <span className="login-card__eyebrow">WORKSPACE ACCESS</span>
+                    <h2>{adminExists === false ? '初始化工作区' : showOidcButtons ? '单点登录' : '欢迎回来'}</h2>
+                    <p className="login-card__desc">{adminExists === false ? '创建管理员密码以完成首次配置。' : showOidcButtons ? '使用已配置的身份提供商继续。' : '登录以进入 WatchAlert 工作区。'}</p>
                     {adminExists === null ? (
-                        // 加载中状态
-                        <div className="text-center text-gray-500 py-8">加载中...</div>
+                        <div className="login-loading"><span />正在检查工作区状态…</div>
                     ) : !adminExists ? (
-                        // ✅ admin 不存在：显示初始化密码表单（样式保持原结构）
-                        <form onSubmit={handleInitAndLogin} className="space-y-6">
-                            <div>
-                                <input
-                                    type="text"
-                                    name="identifier"
-                                    value="admin"
-                                    readOnly
-                                    placeholder="用户名"
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-black transition-all bg-gray-50"
-                                />
-                            </div>
-                            <div>
-                                <input
-                                    type="password"
-                                    name="password"
-                                    placeholder="设置密码"
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-black transition-all"
-                                    required
-                                />
-                            </div>
-                            <div>
-                                <input
-                                    type="password"
-                                    name="confirm-password"
-                                    placeholder="确认密码"
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-black transition-all"
-                                    required
-                                />
-                            </div>
-                            <button
-                                type="submit"
-                                className="w-full bg-black text-white py-3 rounded-lg hover:bg-gray-800 transition-colors"
-                            >
-                                初始化并登陆
-                            </button>
+                        <form onSubmit={handleInitAndLogin} className="login-form">
+                            <label>管理员账号<input type="text" name="identifier" value="admin" readOnly className="login-input login-input--readonly" /></label>
+                            <label>设置密码<input type="password" name="password" placeholder="至少 8 个字符" className="login-input" required /></label>
+                            <label>确认密码<input type="password" name="confirm-password" placeholder="再次输入密码" className="login-input" required /></label>
+                            <button type="submit" className="login-submit">初始化并进入工作区</button>
                         </form>
                     ) : !showOidcButtons ? (
-                        // ✅ admin 存在：显示普通登录表单（保持原逻辑）
-                        <div>
-                            <form onSubmit={onFinish} className="space-y-6">
-                                <div>
-                                    <input
-                                        type="text"
-                                        name="identifier"
-                                        placeholder="用户名/邮箱/手机号"
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-black transition-all"
-                                        required
-                                    />
-                                </div>
-                                <div>
-                                    <input
-                                        type="password"
-                                        name="password"
-                                        placeholder="密码"
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-black transition-all"
-                                        required
-                                    />
-                                </div>
-                                <button
-                                    type="submit"
-                                    className="w-full bg-black text-white py-3 rounded-lg hover:bg-gray-800 transition-colors"
-                                >
-                                    登录
-                                </button>
+                        <div className="login-form-wrap">
+                            <form onSubmit={onFinish} className="login-form">
+                                <label>账号<input type="text" name="identifier" placeholder="用户名、邮箱或手机号" className="login-input" required /></label>
+                                <label>密码<input type="password" name="password" placeholder="输入密码" className="login-input" required /></label>
+                                <button type="submit" className="login-submit">登录</button>
                             </form>
-                            <p className="text-black text-center text-sm py-3 rounded-lg cursor-pointer hover:underline" onClick={()=> setShowOidcButtons(true)}>Login using SSO service</p>
+                            <button type="button" className="login-text-button" onClick={() => setShowOidcButtons(true)}>使用 SSO 登录 <span>→</span></button>
                         </div>
                     ) : (
-                        // OIDC 登录选项
-                        <div>
-                            <button 
-                                onClick={handleOidcLogin}
-                                className="w-full py-3 border border-gray-300 text-black rounded-lg hover:bg-gray-100 transition-colors text-center"
-                            >
-                                Login with Oidc
-                            </button>
-                            <p className="text-black text-center text-sm py-3 rounded-lg cursor-pointer hover:underline" onClick={()=> setShowOidcButtons(false)}>Login as administrator</p>
+                        <div className="login-form-wrap">
+                            <button type="button" onClick={handleOidcLogin} className="login-sso-button">使用 OIDC 单点登录 <span>→</span></button>
+                            <button type="button" className="login-text-button" onClick={() => setShowOidcButtons(false)}>使用账号密码登录</button>
                         </div>
                     )}
-                </motion.div>
-            </div>
-        </div>
+                </div>
+                <p className="login-footer">WatchAlert · A calmer way to run operations</p>
+            </section>
+        </main>
     );
 };

@@ -45,7 +45,7 @@ export default [
     },
     {
         path: '/alerts',
-        element: <ComponentsContent name="告警" c={<AlertStream />} />,
+        element: <ComponentsContent name="off" c={<AlertStream />} />,
     },
     {
         path: '/copilot',
@@ -53,7 +53,7 @@ export default [
     },
     {
         path: '/manage',
-        element: <ComponentsContent name="Manage" c={<Manage />} />,
+        element: <ComponentsContent name="off" c={<Manage />} />,
     },
     {
         path: '/login',
@@ -181,19 +181,19 @@ export default [
     },
     {
         path: 'recordingRules',
-        element: <ComponentsContent c={<RecordingRuleIndex />} />
+        element: <ComponentsContent name="记录规则" c={<RecordingRuleIndex />} />
     },
     {
         path: '/recordingRules/:id/list',
-        element: <ComponentsContent c={<RecordingRuleIndex />} />
+        element: <ComponentsContent name="记录规则 / 规则" c={<RecordingRuleIndex />} />
     },
     {
         path: '/recordingRules/:id/create',
-        element: <ComponentsContent c={<RecordingRuleCreatePage type="add" />} />
+        element: <ComponentsContent name="记录规则 / 新建规则" c={<RecordingRuleCreatePage type="add" />} />
     },
     {
         path: '/recordingRules/:id/rule/:ruleId/edit',
-        element: <ComponentsContent c={<RecordingRuleCreatePage type="edit" />} />
+        element: <ComponentsContent name="记录规则 / 编辑规则" c={<RecordingRuleCreatePage type="edit" />} />
     },
     {
         path: '/dataAnalysis',
@@ -201,11 +201,11 @@ export default [
     },
     {
         path: 'prometheusTargets',
-        element: <ComponentsContent c={<PrometheusServiceDiscovery />} />
+        element: <ComponentsContent name="服务发现" c={<PrometheusServiceDiscovery />} />
     },
     {
         path: '/prometheusTargets/:id/list',
-        element: <ComponentsContent c={<PrometheusServiceDiscovery />} />
+        element: <ComponentsContent name="服务发现" c={<PrometheusServiceDiscovery />} />
     },
     {
         path: '/*',

@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useEffect, useState, useContext, useMemo } from "react"
-import {Alert, Tabs, Form, Input, Select, Button, Collapse, Table, Tag, Progress, Spin, Typography, Space, message} from "antd"
+import {Alert, Tabs, Form, Input, Select, Button, Collapse, Table, Tag, Spin, Typography, Space, message} from "antd"
 import Marquee from "react-fast-marquee"
 import { ProbingOnce } from "../../api/probing"
 import {MinusCircleOutlined, PlusOutlined} from "@ant-design/icons";
