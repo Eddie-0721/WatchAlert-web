@@ -101,7 +101,7 @@ export const AlertStream = () => {
             console.error('Unable to load alert history:', error);
             message.error('加载历史事件失败');
         } finally { setHistoryLoading(false); }
-    }, [eventParams]);
+    }, [eventParams, environment, service]);
 
     useEffect(() => { loadCenters().catch(() => message.error('加载故障中心失败')); }, [loadCenters]);
     useEffect(() => { loadEvents(); }, [loadEvents]);

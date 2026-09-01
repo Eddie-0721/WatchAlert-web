@@ -134,6 +134,18 @@ export const AlertCurrentEvent = (props) => {
         "muting": { color: "gray", text: "静默中" },
     }
 
+    const lifecycleOf = (record) => record.lifecycle_status || record.lifecycleStatus || record.status || "alerting"
+    const stateTags = (record) => {
+        const lifecycle = statusMap[lifecycleOf(record)] || statusMap.alerting
+        const acknowledged = record.acknowledged ?? record.confirmState?.isOk ?? Boolean(record.confirmState?.confirmUsername)
+        const silenced = record.silenced ?? record.status === "muting"
+        return <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
+            <Tag color={lifecycle.color}>{lifecycle.text}</Tag>
+            {acknowledged && <Tag color="purple">已认领</Tag>}
+            {silenced && <Tag color="default">已静默</Tag>}
+        </div>
+    }
+
     const rowSelection = {
         selectedRowKeys,
         onChange: (selectedKeys) => {
@@ -310,14 +322,7 @@ export const AlertCurrentEvent = (props) => {
             dataIndex: "status",
             key: "status",
             width: "100px",
-            render: (text, record) => {
-                const status = statusMap[text]
-                return (
-                    <div>
-                        <Tag color={status.color}>{status.text}</Tag>
-                    </div>
-                )
-            },
+            render: (_, record) => stateTags(record),
         },
         {
             title: "认领人",
@@ -353,7 +358,7 @@ export const AlertCurrentEvent = (props) => {
                         label: '认领它',
                         onClick: () => handleClaimOne(record)
                     },
-                    ...(record.status !== "silenced" ? [{
+                    ...(!(record.silenced ?? record.status === "muting") ? [{
                         key: 'silence',
                         label: '静默它',
                         onClick: () => handleSilenceModalOpen(record)
@@ -452,7 +457,7 @@ export const AlertCurrentEvent = (props) => {
                 index: pageIndex,
                 size: pageSize,
                 query: searchQuery || undefined,
-                status: selectedStatus || undefined,
+                lifecycleStatus: selectedStatus || undefined,
                 datasourceType: selectedDataSource || undefined,
                 severity: selectedAlertLevel || undefined,
                 sortOrder: sortOrder || undefined,
@@ -1359,15 +1364,7 @@ export const AlertCurrentEvent = (props) => {
                                 {
                                     key: 'status',
                                     label: '事件状态',
-                                    children: (
-                                        <>
-                                            {(selectedEvent.status === "alerting" && selectedEvent.confirmState?.confirmUsername) && (
-                                                <Tag style={{ color:"#980d9e", background:"#f6edff", borderColor: "rgb(204 121 208)" }}>处理中</Tag>
-                                            ) ||
-                                                <Tag color={statusMap[selectedEvent.status].color}>{statusMap[selectedEvent.status].text}</Tag>
-                                            }
-                                        </>
-                                    ),
+                                    children: stateTags(selectedEvent),
                                 },
                                 {
                                     key: 'labels',
