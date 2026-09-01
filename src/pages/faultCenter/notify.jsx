@@ -83,23 +83,15 @@ export const FaultCenterNotify = () => {
             const data = res?.data
             
             // 处理重复通知间隔数据结构
-            let repeatNoticeInterval = data.repeatNoticeInterval
-            if (repeatNoticeInterval && typeof repeatNoticeInterval === "object" && !Array.isArray(repeatNoticeInterval)) {
-                // 已经是对象格式，直接使用
-            } else if (repeatNoticeInterval !== undefined && repeatNoticeInterval !== null) {
-                // 旧的数字格式，转换为对象格式
-                repeatNoticeInterval = {
-                    "0": Number(repeatNoticeInterval),
-                    "1": Number(repeatNoticeInterval),
-                    "2": Number(repeatNoticeInterval)
-                }
-            } else {
-                // 默认值
-                repeatNoticeInterval = {
-                    "0": 60,
-                    "1": 120,
-                    "2": 360
-                }
+            const rawRepeatNoticeInterval = data.repeatNoticeInterval
+            const legacyInterval = rawRepeatNoticeInterval !== undefined && rawRepeatNoticeInterval !== null
+                && typeof rawRepeatNoticeInterval !== "object"
+                ? Number(rawRepeatNoticeInterval)
+                : undefined
+            const repeatNoticeInterval = {
+                P0: Number(rawRepeatNoticeInterval?.P0 ?? rawRepeatNoticeInterval?.["0"] ?? legacyInterval ?? 60),
+                P1: Number(rawRepeatNoticeInterval?.P1 ?? rawRepeatNoticeInterval?.["1"] ?? legacyInterval ?? 120),
+                P2: Number(rawRepeatNoticeInterval?.P2 ?? rawRepeatNoticeInterval?.["2"] ?? legacyInterval ?? 360),
             }
 
             setDetail(data)
