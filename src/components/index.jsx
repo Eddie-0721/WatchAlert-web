@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button, Layout, Result, Spin } from 'antd';
 import { LeftOutlined, LoginOutlined } from '@ant-design/icons';
+import { useLocation } from 'react-router-dom';
 import './index.css';
 import { ComponentSider } from './sider';
 import Auth from '../utils/Auth';
@@ -73,6 +74,8 @@ const LoadingScreen = ({ label }) => (
 
 const Components = ({ name, c }) => {
     const [state, setState] = useState({ loading: true, error: false });
+    const contentRef = useRef(null);
+    const location = useLocation();
 
     useEffect(() => {
         let mounted = true;
@@ -109,6 +112,13 @@ const Components = ({ name, c }) => {
         return () => { mounted = false; };
     }, []);
 
+    useEffect(() => {
+        if (contentRef.current) {
+            contentRef.current.scrollTop = 0;
+            contentRef.current.scrollLeft = 0;
+        }
+    }, [location.pathname, location.search]);
+
     if (state.loading) return <LoadingScreen label="正在准备工作区…" />;
 
     if (state.error) {
@@ -128,7 +138,7 @@ const Components = ({ name, c }) => {
         <Layout className="app-shell">
             <ComponentSider />
             <Layout className="app-main-shell">
-                <Content className={`app-content ${name === 'off' ? 'app-content--flush' : ''}`}>
+                <Content ref={contentRef} className={`app-content ${name === 'off' ? 'app-content--flush' : ''}`}>
                     {name !== 'off' && <LegacyPageHeader name={name} />}
                     <div className={name === 'off' ? 'app-page-body app-page-body--flush' : 'app-page-body'}>{c}</div>
                 </Content>

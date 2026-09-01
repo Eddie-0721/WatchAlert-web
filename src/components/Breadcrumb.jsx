@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button, Divider, Breadcrumb as AntdBreadcrumb } from 'antd';
+import { Button, Breadcrumb as AntdBreadcrumb } from 'antd';
 import { LeftOutlined, HomeOutlined } from '@ant-design/icons';
 
 export const Breadcrumb = ({ items, showBackButton = true, onBack}) => {
@@ -21,6 +21,7 @@ export const Breadcrumb = ({ items, showBackButton = true, onBack}) => {
     return (
         <>
             <div
+                className="legacy-breadcrumb"
                 style={{
                     display: 'flex',
                     alignItems: 'center',
