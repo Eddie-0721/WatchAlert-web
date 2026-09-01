@@ -116,10 +116,104 @@ button, input, textarea, select { font: inherit; }
 .ant-dropdown .ant-dropdown-menu { padding: 5px; border: 1px solid #e7e7e9; border-radius: 8px; box-shadow: 0 12px 30px rgba(24,24,27,.12); }
 .ant-dropdown .ant-dropdown-menu-item { min-width: 130px; padding: 7px 9px; border-radius: 5px; font-size: 12px; }
 
+/* Shared form system.  It deliberately applies to legacy form drawers and modals too,
+   so the operational screens retain their workflows while receiving one visual language. */
+.ant-modal .ant-form-item,
+.ant-drawer .ant-form-item { margin-bottom: 20px; }
+.ant-modal .ant-form-item-label,
+.ant-drawer .ant-form-item-label { padding-bottom: 6px; }
+.ant-modal .ant-form-item-label > label,
+.ant-drawer .ant-form-item-label > label { color: #27272a; font-size: 12px; font-weight: 650; }
+.ant-modal .ant-form-item-extra,
+.ant-drawer .ant-form-item-extra { margin-top: 5px; color: #71717a; font-size: 11px; line-height: 1.55; }
+.ant-modal .ant-input,
+.ant-modal .ant-input-affix-wrapper,
+.ant-modal .ant-select-selector,
+.ant-modal .ant-picker,
+.ant-modal .ant-input-number,
+.ant-drawer .ant-input,
+.ant-drawer .ant-input-affix-wrapper,
+.ant-drawer .ant-select-selector,
+.ant-drawer .ant-picker,
+.ant-drawer .ant-input-number { min-height: 36px; border-color: #dedee3 !important; border-radius: 7px !important; box-shadow: none !important; }
+.ant-modal textarea.ant-input,
+.ant-drawer textarea.ant-input { min-height: 88px; padding: 9px 11px; }
+.ant-modal .ant-input:hover,
+.ant-modal .ant-input-affix-wrapper:hover,
+.ant-modal .ant-select-selector:hover,
+.ant-modal .ant-picker:hover,
+.ant-drawer .ant-input:hover,
+.ant-drawer .ant-input-affix-wrapper:hover,
+.ant-drawer .ant-select-selector:hover,
+.ant-drawer .ant-picker:hover { border-color: #a1a1aa !important; }
+.ant-modal .ant-input:focus,
+.ant-modal .ant-input-affix-wrapper-focused,
+.ant-modal .ant-select-focused .ant-select-selector,
+.ant-modal .ant-picker-focused,
+.ant-drawer .ant-input:focus,
+.ant-drawer .ant-input-affix-wrapper-focused,
+.ant-drawer .ant-select-focused .ant-select-selector,
+.ant-drawer .ant-picker-focused { border-color: #18181b !important; box-shadow: 0 0 0 3px rgba(24,24,27,.07) !important; }
+.ant-modal .ant-form-item-control-input-content > .ant-btn-primary,
+.ant-drawer .ant-form-item-control-input-content > .ant-btn-primary { min-width: 88px; }
+
+.wa-form-drawer .ant-drawer-header { padding: 18px 24px; background: #fff; }
+.wa-form-drawer .ant-drawer-body { padding: 24px; background: #fff; }
+.wa-form-drawer .ant-drawer-footer { padding: 14px 24px; border-top: 1px solid #e9e9eb; background: rgba(255,255,255,.96); }
+.wa-form-drawer-title { display: flex; flex-direction: column; gap: 3px; }
+.wa-form-drawer-title > span { color: #18181b; font-size: 15px; font-weight: 680; }
+.wa-form-drawer-title > small { color: #71717a; font-size: 11px; font-weight: 400; }
+.wa-form-drawer-footer { display: flex; justify-content: flex-end; gap: 8px; }
+.wa-form-drawer-footer .ant-btn { min-width: 88px; }
+.wa-form-section-heading { display: flex; flex-direction: column; gap: 4px; margin-bottom: 18px; }
+.wa-form-section-heading > span { color: #18181b; font-size: 13px; font-weight: 680; }
+.wa-form-section-heading > small { color: #71717a; font-size: 11px; line-height: 1.55; }
+.wa-form-drawer .ant-divider { margin: 26px 0; border-color: #eeeeef; }
+.wa-context-field { display: flex; justify-content: space-between; align-items: center; min-height: 54px; padding: 0 12px; margin-bottom: 20px; border: 1px solid #e4e4e7; border-radius: 7px; background: #fafafa; }
+.wa-context-field span { color: #71717a; font-size: 12px; }
+.wa-context-field strong { color: #27272a; font-size: 12px; font-weight: 650; }
+.wa-silence-context { display: flex; justify-content: space-between; gap: 16px; padding: 13px 14px; margin-bottom: 26px; border: 1px solid #e4e4e7; border-radius: 8px; background: #fafafa; }
+.wa-silence-context div { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.wa-silence-context span { color: #71717a; font-size: 11px; }
+.wa-silence-context strong { overflow: hidden; color: #18181b; font-size: 13px; font-weight: 680; text-overflow: ellipsis; white-space: nowrap; }
+.wa-silence-context p { margin: 0; color: #52525b; font-size: 11px; }
+.wa-silence-context .ant-tag { align-self: flex-start; margin: 1px 0 0; color: #3f3f46; border-color: #d4d4d8; background: #fff; }
+.wa-duration-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin: -4px 0 15px; }
+.wa-duration-actions > span { margin-right: 2px; color: #71717a; font-size: 11px; }
+.wa-duration-actions .ant-btn { height: 26px; padding: 0 9px; color: #52525b; font-size: 11px; border-color: #dedee3; background: #fff; }
+.wa-duration-actions .ant-btn:hover { color: #18181b; border-color: #a1a1aa; }
+.wa-scope-choice { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 16px; }
+.wa-scope-choice button { min-height: 66px; padding: 11px 12px; text-align: left; border: 1px solid #e4e4e7; border-radius: 8px; background: #fff; cursor: pointer; transition: .15s ease; }
+.wa-scope-choice button:hover:not(:disabled) { border-color: #a1a1aa; background: #fafafa; }
+.wa-scope-choice button.is-active { border-color: #18181b; box-shadow: inset 0 0 0 1px #18181b; }
+.wa-scope-choice button:disabled { color: #a1a1aa; cursor: not-allowed; background: #fafafa; }
+.wa-scope-choice strong, .wa-scope-choice small { display: block; }
+.wa-scope-choice strong { margin-bottom: 4px; color: #27272a; font-size: 12px; font-weight: 650; }
+.wa-scope-choice small { color: #71717a; font-size: 10px; line-height: 1.4; }
+.wa-matcher-list { display: flex; flex-direction: column; gap: 8px; }
+.wa-matcher-row { display: grid; grid-template-columns: minmax(110px, 1fr) 86px minmax(130px, 1.2fr) 32px; gap: 8px; align-items: start; }
+.wa-matcher-row .ant-form-item { margin-bottom: 0; }
+.wa-matcher-row .ant-btn { color: #71717a; }
+.wa-matcher-row .ant-btn:not(:disabled):hover { color: #dc2626; background: #fef2f2; }
+.wa-add-matcher { align-self: flex-start; margin-top: 2px; color: #52525b; border-color: #d4d4d8; }
+.wa-silence-summary { display: flex; flex-wrap: wrap; gap: 6px; align-items: baseline; padding: 11px 12px; margin-top: 16px; border-left: 2px solid #18181b; background: #fafafa; }
+.wa-silence-summary span { color: #71717a; font-size: 11px; }
+.wa-silence-summary strong { color: #27272a; font-size: 12px; font-weight: 650; overflow-wrap: anywhere; }
+.wa-silence-summary small { width: 100%; color: #71717a; font-size: 11px; }
+.wa-silence-note { margin-top: 26px; border-color: #e4e4e7; background: #fafafa; }
+.wa-silence-note .ant-alert-message { color: #27272a; font-size: 12px; font-weight: 650; }
+.wa-silence-note .ant-alert-description { color: #71717a; font-size: 11px; line-height: 1.6; }
+
 .app-page-body [class*="CodeMirror"],
 .app-page-body .monaco-editor { border: 1px solid #e7e7e9; border-radius: 8px; overflow: hidden; }
 @media (max-width: 768px) {
   .app-page-body .ant-table-thead > tr > th, .app-page-body .ant-table-tbody > tr > td { padding-right: 10px; padding-left: 10px; }
   .app-page-body .ant-card-body { padding: 14px; }
   .ant-drawer .ant-drawer-body { padding: 14px; }
+  .wa-form-drawer .ant-drawer-body { padding: 18px 14px; }
+  .wa-form-drawer .ant-drawer-header, .wa-form-drawer .ant-drawer-footer { padding-right: 14px; padding-left: 14px; }
+  .wa-scope-choice { grid-template-columns: 1fr; }
+  .wa-matcher-row { grid-template-columns: minmax(0, 1fr) 76px 30px; }
+  .wa-matcher-row > :nth-child(3) { grid-column: 1 / 3; }
+  .wa-matcher-row > :nth-child(4) { grid-column: 3; grid-row: 1; }
 }

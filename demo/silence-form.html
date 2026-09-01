@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>WatchAlert · 创建静默 Demo</title>
+  <style>
+    :root{
+      --bg:#f4f4f5;--panel:#fff;--soft:#fafafa;--text:#18181b;--muted:#71717a;
+      --faint:#a1a1aa;--line:#e4e4e7;--line-strong:#d4d4d8;--black:#18181b;
+      --red:#dc2626;--red-bg:#fef2f2;--amber:#b45309;--amber-bg:#fffbeb;
+      --green:#15803d;--green-bg:#f0fdf4;--blue:#2563eb;--blue-bg:#eff6ff;
+      --shadow:0 24px 80px rgba(24,24,27,.12);--radius:10px;
+    }
+    *{box-sizing:border-box}body{margin:0;min-width:320px;min-height:100vh;background:var(--bg);color:var(--text);font:14px/1.5 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;-webkit-font-smoothing:antialiased}
+    button,input,textarea,select{font:inherit;color:inherit}button{cursor:pointer}button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+    .demo{min-height:100vh;display:grid;place-items:center;padding:38px}.sheet{width:min(980px,100%);height:min(900px,calc(100vh - 76px));min-height:620px;background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column}
+    .sheet-head{display:flex;align-items:flex-start;gap:14px;padding:24px 28px 22px;border-bottom:1px solid var(--line)}.head-icon{width:36px;height:36px;border:1px solid var(--line);border-radius:9px;display:grid;place-items:center;background:var(--soft)}.head-icon svg{width:18px;height:18px}.head-copy{min-width:0;flex:1}.eyebrow{color:var(--muted);font-size:11px}.sheet-head h1{margin:3px 0 4px;font-size:20px;line-height:1.35;letter-spacing:-.025em;font-weight:620}.sheet-head p{margin:0;color:var(--muted);font-size:12px}.close{width:32px;height:32px;border:0;border-radius:7px;background:transparent;color:var(--muted);font-size:20px}.close:hover{background:var(--soft);color:var(--text)}
+    .content{display:grid;grid-template-columns:280px minmax(0,1fr);flex:1;min-height:0;overflow:hidden}.context{padding:24px;border-right:1px solid var(--line);background:var(--soft);overflow:auto}.context-label,.section-kicker{color:var(--faint);font-size:10px;font-weight:650;letter-spacing:.08em;text-transform:uppercase}.alert-card{margin-top:10px;padding:15px;border:1px solid var(--line);border-radius:9px;background:var(--panel)}.alert-top{display:flex;align-items:center;gap:7px}.severity{padding:2px 6px;border-radius:5px;background:var(--red-bg);color:var(--red);font-size:10px;font-weight:650}.live{display:inline-flex;align-items:center;gap:5px;color:var(--muted);font-size:10px}.live:before{content:"";width:6px;height:6px;border-radius:50%;background:var(--red)}.alert-card h2{margin:12px 0 6px;font-size:13px;line-height:1.5;font-weight:600}.alert-card>p{margin:0;color:var(--muted);font-size:11px;line-height:1.65}.context-list{margin-top:14px;border-top:1px solid var(--line)}.context-row{display:grid;grid-template-columns:66px minmax(0,1fr);gap:8px;padding:9px 0;border-bottom:1px solid var(--line);font-size:10px}.context-row span{color:var(--muted)}.context-row strong{font-weight:550;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.context-note{display:flex;gap:8px;margin-top:18px;color:var(--muted);font-size:10px;line-height:1.6}.context-note svg{flex:0 0 auto;margin-top:2px;width:14px;height:14px}
+    .form-wrap{min-width:0;padding:0 30px 92px;overflow:auto}.section{padding:26px 0;border-bottom:1px solid var(--line)}.section:last-child{border-bottom:0}.section-title{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:17px}.section-title h3{margin:0;font-size:13px;font-weight:620}.section-title p{margin:3px 0 0;color:var(--muted);font-size:11px}.step{width:22px;height:22px;display:grid;place-items:center;border-radius:50%;background:var(--soft);color:var(--muted);font-size:10px;font-weight:650}
+    .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px}.field{min-width:0}.field+.field-row{margin-top:16px}.field label{display:flex;align-items:center;gap:5px;margin-bottom:7px;font-size:11px;font-weight:570}.required{color:var(--red)}.hint{margin-top:6px;color:var(--muted);font-size:10px}.control{width:100%;height:36px;padding:0 11px;border:1px solid var(--line-strong);border-radius:7px;background:var(--panel);outline:0;transition:.15s}.control:hover{border-color:#a1a1aa}.control:focus{border-color:var(--text);box-shadow:0 0 0 3px rgba(24,24,27,.07)}.control[readonly]{background:var(--soft);color:var(--muted)}textarea.control{height:78px;padding:9px 11px;resize:vertical;line-height:1.55}.counter{float:right;color:var(--faint)}
+    .quick-time{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:13px}.quick{height:31px;padding:0 10px;border:1px solid var(--line);border-radius:7px;background:var(--panel);color:var(--muted);font-size:11px}.quick:hover{border-color:var(--line-strong);color:var(--text)}.quick.active{border-color:var(--text);background:var(--text);color:#fff}.time-line{display:grid;grid-template-columns:1fr 18px 1fr;align-items:center;gap:8px}.time-line>span{text-align:center;color:var(--faint);font-size:11px}
+    .scope-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.scope-option{padding:12px;border:1px solid var(--line);border-radius:8px;background:var(--panel);text-align:left}.scope-option:hover{border-color:var(--line-strong)}.scope-option.active{border-color:var(--text);box-shadow:0 0 0 1px var(--text)}.scope-option strong,.scope-option span{display:block}.scope-option strong{font-size:11px}.scope-option span{margin-top:3px;color:var(--muted);font-size:9px;line-height:1.5}.recommended{display:inline-flex!important;width:max-content;margin-bottom:6px;padding:2px 5px;border-radius:4px;background:var(--green-bg);color:var(--green)!important;font-size:8px!important;font-weight:650}
+    .matcher-head{display:flex;align-items:center;justify-content:space-between;margin:18px 0 8px}.matcher-head strong{font-size:11px}.matcher-head span{color:var(--muted);font-size:10px}.matcher-list{display:grid;gap:7px}.matcher{display:grid;grid-template-columns:minmax(110px,.8fr) 70px minmax(160px,1fr) 28px;gap:7px}.matcher .control{height:34px;font-size:11px}.remove{width:28px;height:34px;border:0;border-radius:6px;background:transparent;color:var(--faint)}.remove:hover{background:var(--red-bg);color:var(--red)}.add-condition{height:34px;margin-top:8px;padding:0 10px;border:1px dashed var(--line-strong);border-radius:7px;background:transparent;color:var(--muted);font-size:11px}.add-condition:hover{border-color:var(--text);color:var(--text)}
+    .impact{margin-top:16px;padding:13px 14px;border:1px solid #fde68a;border-radius:8px;background:var(--amber-bg)}.impact-head{display:flex;align-items:center;gap:7px;color:var(--amber);font-size:11px;font-weight:620}.impact-head svg{width:14px;height:14px}.impact p{margin:6px 0 0;color:#78350f;font-size:10px;line-height:1.65}.summary{padding:15px;border-radius:8px;background:var(--soft)}.summary-label{color:var(--muted);font-size:10px}.summary p{margin:6px 0 0;font-size:12px;line-height:1.7}.summary strong{font-weight:650}.summary-meta{display:flex;gap:18px;flex-wrap:wrap;margin-top:11px;padding-top:11px;border-top:1px solid var(--line);color:var(--muted);font-size:9px}.summary-meta span{display:inline-flex;align-items:center;gap:5px}.summary-meta i{width:5px;height:5px;border-radius:50%;background:var(--green)}
+    .footer{position:absolute}.sheet{position:relative}.sheet-foot{position:absolute;z-index:5;left:280px;right:0;bottom:0;height:70px;padding:0 30px;display:flex;align-items:center;justify-content:space-between;gap:16px;border-top:1px solid var(--line);background:rgba(255,255,255,.94);backdrop-filter:blur(12px)}.foot-note{color:var(--muted);font-size:10px}.foot-actions{display:flex;gap:8px}.btn{height:34px;padding:0 13px;border:1px solid var(--line-strong);border-radius:7px;background:var(--panel);font-weight:570;font-size:11px}.btn:hover{background:var(--soft)}.btn.primary{border-color:var(--black);background:var(--black);color:#fff}.btn.primary:hover{background:#27272a}.toast{position:fixed;left:50%;bottom:24px;z-index:20;padding:9px 13px;border-radius:7px;background:var(--text);color:#fff;box-shadow:var(--shadow);font-size:11px;opacity:0;transform:translate(-50%,12px);transition:.2s;pointer-events:none}.toast.show{opacity:1;transform:translate(-50%,0)}
+    @media(max-width:780px){.demo{padding:0}.sheet{height:100vh;min-height:100vh;border:0;border-radius:0}.content{display:block;overflow:auto}.context{overflow:visible;border:0;border-bottom:1px solid var(--line)}.context-list{display:grid;grid-template-columns:1fr 1fr}.context-row:nth-child(odd){padding-right:12px}.form-wrap{padding:0 20px 100px;overflow:visible}.sheet-foot{position:fixed;left:0;padding:0 20px}.scope-tabs{grid-template-columns:1fr}.grid-2{grid-template-columns:1fr}.matcher{grid-template-columns:1fr 62px 1.2fr 28px}}
+    @media(max-width:480px){.demo{display:block}.sheet-head{padding:20px}.context{padding:20px}.matcher{grid-template-columns:1fr 58px 1fr 28px}.time-line{grid-template-columns:1fr}.time-line>span{display:none}.foot-note{display:none}.sheet-foot{justify-content:flex-end}}
+  </style>
+</head>
+<body>
+  <main class="demo">
+    <section class="sheet" aria-label="创建静默表单 Demo">
+      <header class="sheet-head">
+        <div class="head-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M13.7 21a2 2 0 0 1-3.4 0M6.4 6.4A6 6 0 0 1 18 9v3.3c0 .9.3 1.8.9 2.5l1.1 1.4H8M3 3l18 18"/></svg></div>
+        <div class="head-copy"><div class="eyebrow">告警处置 · 创建静默</div><h1>暂时停止重复通知</h1><p>表单已根据当前告警填充。静默不会关闭或恢复告警。</p></div>
+        <button class="close" aria-label="关闭" data-toast="已关闭 Demo">×</button>
+      </header>
+
+      <div class="content">
+        <aside class="context">
+          <div class="context-label">来源告警</div>
+          <article class="alert-card">
+            <div class="alert-top"><span class="severity">P0</span><span class="live">告警中</span></div>
+            <h2>支付网关 P95 延迟超过 2 秒</h2>
+            <p>过去 10 分钟，payment-api 的 P95 延迟持续高于阈值。</p>
+            <div class="context-list">
+              <div class="context-row"><span>环境</span><strong>production</strong></div>
+              <div class="context-row"><span>服务</span><strong>payment-api</strong></div>
+              <div class="context-row"><span>集群</span><strong>prod-shanghai-01</strong></div>
+              <div class="context-row"><span>命名空间</span><strong>payment</strong></div>
+              <div class="context-row"><span>资源</span><strong>payment-api-7d9c</strong></div>
+              <div class="context-row"><span>故障中心</span><strong>生产业务告警</strong></div>
+            </div>
+          </article>
+          <div class="context-note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8h.01"/></svg><span>匹配条件来自当前告警 Label。你可以缩小或扩大静默范围。</span></div>
+        </aside>
+
+        <form class="form-wrap" id="silence-form">
+          <section class="section">
+            <div class="section-title"><div><h3>基础信息</h3><p>帮助值班人员理解为什么创建这条静默。</p></div><span class="step">1</span></div>
+            <div class="grid-2">
+              <div class="field"><label for="name">静默名称 <span class="required">*</span></label><input class="control" id="name" value="生产 / payment-api：临时静默" required></div>
+              <div class="field"><label for="center">故障中心</label><input class="control" id="center" value="生产业务告警" readonly></div>
+            </div>
+            <div class="field" style="margin-top:15px"><label for="reason">处置原因 <span class="required">*</span></label><textarea class="control" id="reason" required>支付网关延迟告警正在排查，临时抑制重复通知。</textarea><div class="hint">请描述维护、故障处置或降噪原因，便于审计和交接。<span class="counter">24 / 500</span></div></div>
+          </section>
+
+          <section class="section">
+            <div class="section-title"><div><h3>静默时长</h3><p>默认从现在开始，建议选择最短且足够的处置窗口。</p></div><span class="step">2</span></div>
+            <div class="quick-time" role="group" aria-label="快速选择静默时长"><button type="button" class="quick" data-minutes="30">30 分钟</button><button type="button" class="quick" data-minutes="60">1 小时</button><button type="button" class="quick active" data-minutes="120">2 小时</button><button type="button" class="quick" data-minutes="240">4 小时</button><button type="button" class="quick" data-minutes="480">当前班次</button><button type="button" class="quick" data-minutes="custom">自定义</button></div>
+            <div class="time-line"><div class="field"><label for="start">开始时间</label><input class="control" id="start" value="2026-09-02 01:45" readonly></div><span>→</span><div class="field"><label for="end">结束时间</label><input class="control" id="end" value="2026-09-02 03:45"></div></div>
+          </section>
+
+          <section class="section">
+            <div class="section-title"><div><h3>静默范围</h3><p>先选择意图，再检查最终匹配条件。</p></div><span class="step">3</span></div>
+            <div class="scope-tabs" role="group" aria-label="选择静默范围">
+              <button type="button" class="scope-option active" data-scope="service"><span class="recommended">推荐</span><strong>当前环境与服务</strong><span>同一生产环境中 payment-api 的告警</span></button>
+              <button type="button" class="scope-option" data-scope="resource"><strong>仅当前资源</strong><span>限制到当前集群、命名空间和实例</span></button>
+              <button type="button" class="scope-option" data-scope="custom"><strong>自定义条件</strong><span>从空条件开始，自行定义匹配范围</span></button>
+            </div>
+            <div class="matcher-head"><strong>匹配条件</strong><span>全部条件同时满足</span></div>
+            <div class="matcher-list" id="matcher-list"></div>
+            <button type="button" class="add-condition" id="add-condition">＋ 添加匹配条件</button>
+            <div class="impact"><div class="impact-head"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M10.3 3.8 2.4 17.2A2 2 0 0 0 4.1 20h15.8a2 2 0 0 0 1.7-2.8L13.7 3.8a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4m0 3h.01"/></svg>静默影响</div><p>该操作只抑制匹配告警的通知投递。告警仍会评估、展示并记录，恢复状态也不会被改变。</p></div>
+          </section>
+
+          <section class="section">
+            <div class="section-title"><div><h3>提交前确认</h3><p>用自然语言再次确认本次操作的范围。</p></div><span class="step">4</span></div>
+            <div class="summary"><div class="summary-label">本次静默将会</div><p id="summary-text">在 <strong>production</strong> 环境中，静默 <strong>payment-api</strong> 的告警通知 <strong>2 小时</strong>。</p><div class="summary-meta"><span><i></i>告警继续评估</span><span><i></i>事件继续记录</span><span><i></i>到期自动恢复通知</span></div></div>
+          </section>
+        </form>
+      </div>
+
+      <footer class="sheet-foot"><span class="foot-note">所有静默操作都会记录操作者与时间。</span><div class="foot-actions"><button type="button" class="btn" data-toast="已取消创建">取消</button><button type="submit" form="silence-form" class="btn primary">创建静默</button></div></footer>
+    </section>
+  </main>
+  <div class="toast" id="toast" role="status">静默规则已创建</div>
+
+  <script>
+    const matcherList = document.getElementById('matcher-list');
+    const summaryText = document.getElementById('summary-text');
+    const endInput = document.getElementById('end');
+    const toast = document.getElementById('toast');
+    let currentDuration = '2 小时';
+    let currentScope = 'service';
+
+    const presets = {
+      service: [['environment','==','production'],['service','==','payment-api']],
+      resource: [['environment','==','production'],['service','==','payment-api'],['cluster','==','prod-shanghai-01'],['namespace','==','payment'],['pod','==','payment-api-7d9c']],
+      custom: [['','','']]
+    };
+
+    function escapeHtml(value){return String(value).replace(/[&<>'"]/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));}
+    function renderMatchers(rows){
+      matcherList.innerHTML = rows.map(([key,op,value],index)=>`<div class="matcher"><input class="control matcher-key" aria-label="标签名" value="${escapeHtml(key)}" placeholder="标签名"><select class="control matcher-op" aria-label="操作符"><option ${op==='=='?'selected':''}>==</option><option ${op==='!='?'selected':''}>!=</option><option ${op==='=~'?'selected':''}>=~</option><option ${op==='!~'?'selected':''}>!~</option></select><input class="control matcher-value" aria-label="标签值" value="${escapeHtml(value)}" placeholder="标签值"><button type="button" class="remove" aria-label="删除条件" data-index="${index}">×</button></div>`).join('');
+      updateSummary();
+    }
+    function getRows(){return [...matcherList.querySelectorAll('.matcher')].map(row=>[row.querySelector('.matcher-key').value,row.querySelector('.matcher-op').value,row.querySelector('.matcher-value').value]);}
+    function updateSummary(){
+      const rows=getRows(); const env=rows.find(row=>row[0]==='environment')?.[2]; const service=rows.find(row=>row[0]==='service')?.[2]; const pod=rows.find(row=>row[0]==='pod')?.[2];
+      if(currentScope==='resource'&&pod) summaryText.innerHTML=`仅静默资源 <strong>${escapeHtml(pod)}</strong> 的告警通知 <strong>${currentDuration}</strong>。`;
+      else if(env&&service) summaryText.innerHTML=`在 <strong>${escapeHtml(env)}</strong> 环境中，静默 <strong>${escapeHtml(service)}</strong> 的告警通知 <strong>${currentDuration}</strong>。`;
+      else summaryText.innerHTML=`按照下方 <strong>${rows.filter(row=>row[0]&&row[2]).length} 个自定义条件</strong>，静默匹配的告警通知 <strong>${currentDuration}</strong>。`;
+    }
+    function showToast(message){toast.textContent=message;toast.classList.add('show');clearTimeout(showToast.timer);showToast.timer=setTimeout(()=>toast.classList.remove('show'),1800);}
+
+    document.querySelectorAll('.scope-option').forEach(button=>button.addEventListener('click',()=>{document.querySelectorAll('.scope-option').forEach(item=>item.classList.remove('active'));button.classList.add('active');currentScope=button.dataset.scope;renderMatchers(presets[currentScope]);}));
+    document.querySelectorAll('.quick').forEach(button=>button.addEventListener('click',()=>{document.querySelectorAll('.quick').forEach(item=>item.classList.remove('active'));button.classList.add('active');const value=button.dataset.minutes;if(value==='custom'){currentDuration='自定义时长';endInput.removeAttribute('readonly');endInput.focus();}else{const labels={30:'30 分钟',60:'1 小时',120:'2 小时',240:'4 小时',480:'当前班次'};currentDuration=labels[value];endInput.value=value==='30'?'2026-09-02 02:15':value==='60'?'2026-09-02 02:45':value==='120'?'2026-09-02 03:45':value==='240'?'2026-09-02 05:45':'2026-09-02 09:00';endInput.setAttribute('readonly','');}updateSummary();}));
+    matcherList.addEventListener('click',event=>{const button=event.target.closest('.remove');if(!button)return;const rows=getRows();rows.splice(Number(button.dataset.index),1);renderMatchers(rows.length?rows:[['','','']]);});
+    matcherList.addEventListener('input',updateSummary);matcherList.addEventListener('change',updateSummary);
+    document.getElementById('add-condition').addEventListener('click',()=>renderMatchers([...getRows(),['','','']]));
+    document.querySelectorAll('[data-toast]').forEach(button=>button.addEventListener('click',()=>showToast(button.dataset.toast)));
+    document.getElementById('silence-form').addEventListener('submit',event=>{event.preventDefault();showToast('静默规则已创建 · 2 小时后自动结束');});
+    renderMatchers(presets.service);
+  </script>
+</body>
+</html>

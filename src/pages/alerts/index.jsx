@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { FaultCenterList } from '../../api/faultCenter';
 import { getCurEventList, getHisEventList, ProcessAlertEvent } from '../../api/event';
 import { FormatTime } from '../../utils/lib';
-import { getAlertScope, importantScopeLabels, scopeName, scopeResource } from '../../utils/alertScope';
+import { buildSilenceContext, getAlertScope, importantScopeLabels, scopeName, scopeResource } from '../../utils/alertScope';
 import './index.css';
 
 const levelClass = value => ({ P0: 'critical', P1: 'warning', P2: 'info' }[value] || 'info');
@@ -172,7 +172,7 @@ export const AlertStream = () => {
                     <div className="alert-detail-kicker"><Tag color={selected.severity === 'P0' ? 'error' : selected.severity === 'P1' ? 'warning' : 'processing'}>{selected.severity || 'P2'}</Tag><StateBadges event={selected} /></div>
                     <h2>{selected.rule_name || selected.ruleName}</h2>
                     <p>{selected.annotations || '该事件暂未提供额外说明。'}</p>
-                    {queue !== 'history' && <div className="alert-detail-actions"><Button type="primary" icon={<Check size={15} />} onClick={claimEvent} disabled={acknowledgedOf(selected)}>{acknowledgedOf(selected) ? '已认领' : '认领告警'}</Button><Button icon={<BellOff size={15} />} onClick={() => navigate('/silenceRules')}>创建静默</Button></div>}
+                    {queue !== 'history' && <div className="alert-detail-actions"><Button type="primary" icon={<Check size={15} />} onClick={claimEvent} disabled={acknowledgedOf(selected)}>{acknowledgedOf(selected) ? '已认领' : '认领告警'}</Button><Button icon={<BellOff size={15} />} onClick={() => navigate('/silenceRules', { state: { silenceContext: buildSilenceContext(selected, { faultCenterId: selected.faultCenterId || activeCenterId, faultCenterName: selectedCenterName }) } })}>创建静默</Button></div>}
                     <section className="alert-ai-summary"><div><Sparkles size={15} /><strong>AI 分析入口</strong></div><p>将当前告警的规则、标签与事件上下文交给 Copilot，生成根因推断和下一步处置建议。</p><Button onClick={() => navigate('/copilot', { state: { event: selected } })}>继续分析</Button></section>
                     <section className="alert-detail-section"><h3>发生位置</h3><div className="alert-detail-grid">{[['环境', selectedScope.environment], ['服务', selectedScope.service], ['集群', selectedScope.cluster], ['命名空间', selectedScope.namespace], ['资源', selectedScope.resource], ['实例', selectedScope.instance], ['负责人', selectedScope.owner], ['故障中心', selectedCenterName]].map(([label, value]) => <div key={label}><span>{label}</span><strong>{value || '未标记'}</strong></div>)}</div></section>
                     <section className="alert-detail-section"><h3>事件上下文</h3><div className="alert-detail-grid"><div><span>数据源</span><strong>{selected.datasource_type || selected.datasourceType || '-'}</strong></div><div><span>规则 ID</span><strong>{selected.rule_id || selected.ruleId || '-'}</strong></div><div><span>指纹</span><strong>{selected.fingerprint || '-'}</strong></div><div><span>{queue === 'history' ? '恢复时间' : '首次发生'}</span><strong>{FormatTime(queue === 'history' ? selected.recover_time : selected.first_trigger_time || selected.tiggerTime)}</strong></div></div></section>

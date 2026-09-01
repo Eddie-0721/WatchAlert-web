@@ -59,6 +59,7 @@ import { ReactComponent as AlicloudImg } from "../alert/rule/img/alicloud.svg"
 import { ReactComponent as JaegerImg } from "../alert/rule/img/jaeger.svg"
 import { ReactComponent as AwsImg } from "../alert/rule/img/AWSlogo.svg"
 import { ReactComponent as LokiImg } from "../alert/rule/img/L.svg"
+import { buildSilenceContext } from "../../utils/alertScope";
 
 import { ReactComponent as K8sImg } from "../alert/rule/img/Kubernetes.svg"
 import { ReactComponent as ESImg } from "../alert/rule/img/ElasticSearch.svg"
@@ -423,16 +424,7 @@ export const AlertCurrentEvent = (props) => {
     }, [searchQuery, id, isFiltering, currentPagination.pageIndex, currentPagination.pageSize, sortOrder])
 
     const handleSilenceModalOpen = (record) => {
-        const excludeKeys = ['value']; // 要排除的 key 列表
-        const labelsArray = Object.entries(record.labels || {})
-            .filter(([key]) => !excludeKeys.includes(key))
-            .map(([key, value]) => ({
-                key,
-                operator: "=",
-                value,
-            }));
-
-        setSelectedSilenceRow({ labels: labelsArray });
+        setSelectedSilenceRow(buildSilenceContext(record, { faultCenterId: id }));
         setSilenceVisible(true);
     };
 
@@ -1295,7 +1287,8 @@ export const AlertCurrentEvent = (props) => {
             `}</style>
 
             <CreateSilenceModal visible={silenceVisible} onClose={handleSilenceModalClose} type="create"
-                                selectedRow={selectedSilenceRow} faultCenterId={id}/>
+                                silenceContext={selectedSilenceRow} faultCenterId={id}
+                                handleList={() => handleCurrentEventList(currentPagination.pageIndex, currentPagination.pageSize)}/>
 
             <Drawer
                 title="事件详情"

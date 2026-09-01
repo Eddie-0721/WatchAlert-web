@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   Typography, 
   Radio, 
@@ -27,7 +28,7 @@ import {
     SearchOutlined // 添加搜索图标
 } from "@ant-design/icons";
 import "../alert/rule/index.css";
-import {FaultCenterReset} from "../../api/faultCenter";
+import {FaultCenterList, FaultCenterReset} from "../../api/faultCenter";
 import {HandleShowTotal} from "../../utils/lib";
 
 const { Title } = Typography
@@ -36,6 +37,10 @@ const { confirm } = Modal;
 
 export const Silences = (props) => {
     const { faultCenterId, aggregationType } = props;
+    const location = useLocation();
+    const navigate = useNavigate();
+    const [silenceContext, setSilenceContext] = useState(location.state?.silenceContext || null);
+    const [faultCenters, setFaultCenters] = useState([]);
     const [selectedRow, setSelectedRow] = useState(null);
     const [updateVisible, setUpdateVisible] = useState(false);
     const [visible, setVisible] = useState(false);
@@ -51,6 +56,8 @@ export const Silences = (props) => {
     const [searchText, setSearchText] = useState(''); // 添加搜索文本状态
     const [height, setHeight] = useState(window.innerHeight)
     const [selectStatus, setSelectStatus] = useState("1")
+
+    const effectiveFaultCenterId = faultCenterId || silenceContext?.faultCenterId;
 
     useEffect(() => {
         // 定义一个处理窗口大小变化的函数
@@ -68,8 +75,19 @@ export const Silences = (props) => {
     }, [])
 
     useEffect(() => {
+        FaultCenterList().then(res => setFaultCenters(res?.data || [])).catch(() => setFaultCenters([]));
+    }, []);
+
+    useEffect(() => {
+        if (location.state?.silenceContext) {
+            setSilenceContext(location.state.silenceContext);
+            setVisible(true);
+        }
+    }, [location.state]);
+
+    useEffect(() => {
         handleList();
-    }, [pagination.index, pagination.size]);  // 添加分页依赖
+    }, [pagination.index, pagination.size, effectiveFaultCenterId]);  // 添加分页依赖
 
     // 获取所有数据
     const handleList = async (status) => {
@@ -77,7 +95,7 @@ export const Silences = (props) => {
             const params = {
                 index: pagination.index,
                 size: pagination.size,
-                faultCenterId: faultCenterId,
+                faultCenterId: effectiveFaultCenterId,
                 query: searchText || undefined, // 添加搜索参数
                 status: status || "1"
             };
@@ -114,7 +132,7 @@ export const Silences = (props) => {
     const handleDelete = async (record) => {
         try {
             const params = {
-                faultCenterId: faultCenterId,
+                faultCenterId: effectiveFaultCenterId,
                 id: record.id,
                 name: record.name,
             };
@@ -128,6 +146,10 @@ export const Silences = (props) => {
     // 关闭窗口
     const handleModalClose = () => {
         setVisible(false);
+        setSilenceContext(null);
+        if (location.state?.silenceContext) {
+            navigate(`${location.pathname}${location.search}`, { replace: true, state: null });
+        }
     };
 
     const handleUpdateModalClose = () => {
@@ -145,7 +167,7 @@ export const Silences = (props) => {
     const handleAggregationModeChange = async (e) => {
         setSelectedAggregationType(e.target.value)
         const params = {
-            id: faultCenterId,
+            id: effectiveFaultCenterId,
             ["aggregationType"]: e.target.value,
         }
         await FaultCenterReset(params);
@@ -396,7 +418,7 @@ export const Silences = (props) => {
                 <Button 
                     type="primary" 
                     icon={<PlusOutlined />}
-                    onClick={() => setVisible(true)}
+                    onClick={() => { setSilenceContext(null); setVisible(true); }}
                     style={{ 
                         backgroundColor: '#000',
                         borderColor: '#000'
@@ -407,10 +429,10 @@ export const Silences = (props) => {
             </div>
 
             <div style={{ display: 'flex' }}>
-                <CreateSilenceModal visible={visible} onClose={handleModalClose} type='create' handleList={handleList} faultCenterId={faultCenterId} />
+                <CreateSilenceModal visible={visible} onClose={handleModalClose} type='create' handleList={handleList} faultCenterId={effectiveFaultCenterId} silenceContext={silenceContext} faultCenters={faultCenters} />
 
                 <CreateSilenceModal visible={updateVisible} onClose={handleUpdateModalClose} selectedRow={selectedRow}
-                                    type='update' handleList={handleList} faultCenterId={faultCenterId} />
+                                    type='update' handleList={handleList} faultCenterId={effectiveFaultCenterId} faultCenters={faultCenters} />
             </div>
 
             <div style={{
