@@ -4,11 +4,10 @@ import {HandleApiError} from "../utils/lib";
 
 async function getCurEventList(params) {
     try {
-        const queryString = Object.keys(params)
-            .map(key => params[key] !== undefined ? `${key}=${params[key]}` : '')
-            .filter(Boolean)
-            .join('&');
-        const res = await http('get', `/api/w8t/event/curEvent?${queryString}`);
+        const queryString = new URLSearchParams(Object.entries(params || {})
+            .filter(([, value]) => value !== undefined && value !== null && value !== '')
+            .map(([key, value]) => [key, String(value)])).toString();
+        const res = await http('get', `/api/w8t/event/curEvent${queryString ? `?${queryString}` : ''}`);
         return res;
     } catch (error) {
         HandleApiError(error)
@@ -18,12 +17,10 @@ async function getCurEventList(params) {
 
 async function getHisEventList(params) {
     try {
-        const queryString = Object.keys(params)
-            .map(key => params[key] !== undefined ? `${key}=${params[key]}` : '')
-            .filter(Boolean)
-            .join('&');
-
-        const url = `/api/w8t/event/hisEvent?${queryString}`;
+        const queryString = new URLSearchParams(Object.entries(params || {})
+            .filter(([, value]) => value !== undefined && value !== null && value !== '')
+            .map(([key, value]) => [key, String(value)])).toString();
+        const url = `/api/w8t/event/hisEvent${queryString ? `?${queryString}` : ''}`;
         const res = await http('get', url);
         return res;
     } catch (error) {
