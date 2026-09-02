@@ -99,6 +99,7 @@ export const SystemSettings = () => {
     const [form] = Form.useForm();
     const [version, setVersion] = useState('');
     const [enableAi, setEnableAi] = useState(false);
+    const [enableAgent, setEnableAgent] = useState(false);
     const [alignValue, setAlignValue] = useState('系统认证');
     const [commValue, setCommValue] = useState('邮箱');
     const [roleList, setRoleList] = useState([]);
@@ -149,6 +150,12 @@ export const SystemSettings = () => {
                 timeout: res?.data?.aiConfig?.timeout || 30,
                 maxTokens: res?.data?.aiConfig?.maxTokens || 1000,
                 prompt: res?.data?.aiConfig?.prompt || defaultPrompt
+            };
+
+            const agentConfig = {
+                enable: res?.data?.agentConfig?.enable || false,
+                allowedTools: res?.data?.agentConfig?.allowedTools || [],
+                requireWriteConfirmation: true,
             };
 
             const ldapConfig = {
@@ -211,6 +218,7 @@ export const SystemSettings = () => {
             form.setFieldsValue({
                 communicationConfig,
                 aiConfig,
+                agentConfig,
                 ldapConfig,
                 oidcConfig
             });
@@ -224,6 +232,7 @@ export const SystemSettings = () => {
             setAlignValue(authTypeMapping[res?.data?.authType] || "系统认证");
 
             setEnableAi(aiConfig.enable);
+            setEnableAgent(agentConfig.enable);
             setVersion(res?.data?.appVersion || 'Unknown');
         } catch (error) {
             console.error("Failed to load settings:", error);
@@ -644,6 +653,39 @@ export const SystemSettings = () => {
                             </MyFormItemGroup>
                         </section>
 
+                        <section id="copilot" style={{marginTop: "24px"}}>
+                            <Typography.Title level={5}>Copilot Agent</Typography.Title>
+                            <p style={{margin: '-8px 0 16px', color: '#71717a', fontSize: 12}}>Copilot 只能使用此处允许的 Tool；用户还必须拥有对应的业务权限。静默和认领始终需要人工确认。</p>
+                            <MyFormItemGroup prefix={['agentConfig']}>
+                                <MyFormItem name="enable" valuePropName="checked" label="启用 Copilot Agent">
+                                    <Switch checked={enableAgent} onChange={setEnableAgent} />
+                                </MyFormItem>
+                                {enableAgent && <>
+                                    <MyFormItem name="allowedTools" label="允许的 Tool">
+                                        <Select mode="multiple" placeholder="未选择时默认仅开放查询 Tool" options={[
+                                            { value: 'alerts.search', label: '查询当前告警' },
+                                            { value: 'alerts.get', label: '查询告警详情' },
+                                            { value: 'alerts.related', label: '查询关联告警' },
+                                            { value: 'incidents.get', label: '查询故障中心' },
+                                            { value: 'rules.get', label: '查询告警规则' },
+                                            { value: 'silences.search', label: '查询静默规则' },
+                                            { value: 'prometheus.datasources', label: '查看 Prometheus 数据源' },
+                                            { value: 'prometheus.rule_query', label: '获取规则 PromQL' },
+                                            { value: 'prometheus.query_instant', label: 'Prometheus 即时查询' },
+                                            { value: 'prometheus.query_range', label: 'Prometheus 范围查询' },
+                                            { value: 'silences.propose_create', label: '生成创建静默预览（需确认）' },
+                                            { value: 'silences.propose_update', label: '生成修改静默预览（需确认）' },
+                                            { value: 'silences.propose_delete', label: '生成删除静默预览（需确认）' },
+                                            { value: 'alerts.propose_claim', label: '生成告警认领预览（需确认）' },
+                                        ]} />
+                                    </MyFormItem>
+                                    <MyFormItem name="requireWriteConfirmation" valuePropName="checked" label="写操作确认">
+                                        <Switch checked disabled />
+                                    </MyFormItem>
+                                </>}
+                            </MyFormItemGroup>
+                        </section>
+
                         <section id="auth">
                             <Typography.Title level={5}>认证</Typography.Title>
                             <Segmented
@@ -860,6 +902,7 @@ export const SystemSettings = () => {
                         items={[
                             {key: '1', href: '#communication', title: '通信配置'},
                             {key: '2', href: '#ai', title: 'AI 能力'},
+                            {key: '2a', href: '#copilot', title: 'Copilot Agent'},
                             {key: '3', href: '#auth', title: '认证'},
                             {key: '999', href: '#version', title: '系统版本'},
                             {key: '9999', href: '#option', title: '保存取消'},
