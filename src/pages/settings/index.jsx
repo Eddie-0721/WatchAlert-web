@@ -100,6 +100,7 @@ export const SystemSettings = () => {
     const [version, setVersion] = useState('');
     const [enableAi, setEnableAi] = useState(false);
     const [enableAgent, setEnableAgent] = useState(false);
+    const [agentApiKeySet, setAgentApiKeySet] = useState(false);
     const [alignValue, setAlignValue] = useState('系统认证');
     const [commValue, setCommValue] = useState('邮箱');
     const [roleList, setRoleList] = useState([]);
@@ -159,6 +160,12 @@ export const SystemSettings = () => {
                     datasourceIds: res?.data?.agentConfig?.scope?.datasourceIds || [],
                     environmentLabelKey: res?.data?.agentConfig?.scope?.environmentLabelKey || '',
                     environments: res?.data?.agentConfig?.scope?.environments || [],
+                },
+                model: {
+                    provider: res?.data?.agentConfig?.model?.provider || 'deepseek',
+                    baseURL: res?.data?.agentConfig?.model?.baseURL || 'https://api.deepseek.com',
+                    model: res?.data?.agentConfig?.model?.model || 'deepseek-v4-flash',
+                    apiKey: '',
                 },
                 allowProductionWrite: res?.data?.agentConfig?.allowProductionWrite || false,
                 requireWriteConfirmation: true,
@@ -239,6 +246,7 @@ export const SystemSettings = () => {
 
             setEnableAi(aiConfig.enable);
             setEnableAgent(agentConfig.enable);
+            setAgentApiKeySet(Boolean(res?.data?.agentConfig?.model?.apiKeySet));
             setVersion(res?.data?.appVersion || 'Unknown');
         } catch (error) {
             console.error("Failed to load settings:", error);
@@ -667,6 +675,24 @@ export const SystemSettings = () => {
                                     <Switch checked={enableAgent} onChange={setEnableAgent} />
                                 </MyFormItem>
                                 {enableAgent && <>
+                                    <MyFormItemGroup prefix={['model']}>
+                                        <MyFormItem name="provider" label="模型供应商">
+                                            <Select options={[{value: 'deepseek', label: 'DeepSeek'}]} />
+                                        </MyFormItem>
+                                        <MyFormItem name="baseURL" label="DeepSeek API 地址">
+                                            <Input disabled />
+                                        </MyFormItem>
+                                        <MyFormItem name="model" label="模型">
+                                            <Select options={[
+                                                { value: 'deepseek-v4-flash', label: 'DeepSeek V4 Flash（建议日常告警分析）' },
+                                                { value: 'deepseek-v4-pro', label: 'DeepSeek V4 Pro（复杂故障分析）' },
+                                            ]} />
+                                        </MyFormItem>
+                                        <MyFormItem name="apiKey" label="DeepSeek API Key">
+                                            <Input.Password autoComplete="new-password" placeholder={agentApiKeySet ? '已配置；留空则保持当前 Key' : '请输入 DeepSeek API Key'} />
+                                        </MyFormItem>
+                                    </MyFormItemGroup>
+                                    <p style={{margin: '-8px 0 16px', color: '#71717a', fontSize: 12}}>API Key 仅在保存时上传，由后端加密保存且不会再次显示。更换 Key 时重新填写；清空输入框不会删除已保存的 Key。</p>
                                     <MyFormItem name="allowedTools" label="允许的 Tool">
                                         <Select mode="multiple" placeholder="未选择时默认仅开放查询 Tool" options={[
                                             { value: 'alerts.search', label: '查询当前告警' },
