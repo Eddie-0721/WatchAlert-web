@@ -182,13 +182,15 @@ const NoticeTemplateCreateModal = ({ visible, onClose, selectedRow, type, handle
 
     return (
         <Drawer
-            title={type === 'update' ? '更新通知模版' : '创建通知模版'}
+            title={<div className="wa-form-drawer-title"><span>{type === 'update' ? '编辑通知模板' : '创建通知模板'}</span><small>维护通知正文与渠道模板，变更会影响后续告警投递内容。</small></div>}
             open={visible}
             onClose={onClose}
+            className="wa-form-drawer"
             size='large'
             destroyOnClose={true}
             footer={
-            <div style={{display: 'flex', justifyContent: 'flex-end'}}>
+            <div className="wa-form-drawer-footer">
+                <Button onClick={onClose}>取消</Button>
                 <Button
                     type="primary"
                     htmlType="submit"
@@ -201,7 +203,7 @@ const NoticeTemplateCreateModal = ({ visible, onClose, selectedRow, type, handle
                 </Button>
             </div>}
         >
-            <Form form={form} name="form_item_path" layout="vertical">
+            <Form form={form} name="form_item_path" layout="vertical" className="wa-form">
                 <div style={{display: 'flex'}}>
                     <MyFormItem name="name" label="名称"
                                 style={{

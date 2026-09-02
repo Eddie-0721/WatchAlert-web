@@ -509,16 +509,14 @@ export const CreateNoticeObjectModal = ({ visible, onClose, selectedRow, type, h
 
     return (
         <Drawer
-            title={type === 'create' ? '创建通知对象' : '编辑通知对象'}
+            title={<div className="wa-form-drawer-title"><span>{type === 'create' ? '创建通知对象' : '编辑通知对象'}</span><small>配置通知渠道、值班关联与告警路由策略。</small></div>}
             open={visible}
             onClose={onClose}
+            className="wa-form-drawer"
             width={820}
             footer={
-                <div style={{
-                    display: 'flex',
-                    justifyContent: 'flex-end',
-                    alignItems: 'center'
-                }}>
+                <div className="wa-form-drawer-footer">
+                    <Button onClick={onClose}>取消</Button>
                     <Button
                         type="primary"
                         htmlType="submit"
@@ -531,7 +529,7 @@ export const CreateNoticeObjectModal = ({ visible, onClose, selectedRow, type, h
                 </div>
             }
         >
-            <Form form={form} name="form_item_path" layout="vertical">
+            <Form form={form} name="form_item_path" layout="vertical" className="wa-form">
                 <div style={{display: 'flex'}}>
                     <MyFormItem
                         name="name"

@@ -20,6 +20,7 @@ export const CreateDutyModal = ({ visible, onClose, handleList, selectedRow, typ
     const [filteredOptions, setFilteredOptions] = useState([])
     const renderedOptions = new Set();
     const [selectedItems, setSelectedItems] = useState({})
+    const [submitting, setSubmitting] = useState(false)
 
     useEffect(() => {
         if (selectedRow) {
@@ -76,20 +77,23 @@ export const CreateDutyModal = ({ visible, onClose, handleList, selectedRow, typ
             }
         }
 
-        if (type === 'create') {
-            handleCreate(newData)
-        }
-        if (type === 'update') {
-            const newUpdateData = {
-                ...newData,
-                tenantId: selectedRow.tenantId,
-                id: selectedRow.id,
+        setSubmitting(true)
+        try {
+            if (type === 'create') {
+                await handleCreate(newData)
             }
-            handleUpdate(newUpdateData)
+            if (type === 'update') {
+                const newUpdateData = {
+                    ...newData,
+                    tenantId: selectedRow.tenantId,
+                    id: selectedRow.id,
+                }
+                await handleUpdate(newUpdateData)
+            }
+            onClose()
+        } finally {
+            setSubmitting(false)
         }
-
-        // 关闭弹窗
-        onClose()
     }
 
     const handleSelectChange = (_, value) => {
@@ -121,8 +125,15 @@ export const CreateDutyModal = ({ visible, onClose, handleList, selectedRow, typ
     };
 
     return (
-        <Modal visible={visible} onCancel={onClose} footer={null}>
-            <Form form={form} name="form_item_path" layout="vertical" onFinish={handleFormSubmit}>
+        <Modal
+            title={type === 'update' ? '编辑值班负责人' : '创建值班负责人'}
+            visible={visible}
+            onCancel={onClose}
+            className="wa-form-modal"
+            footer={<div className="wa-form-modal-footer"><Button onClick={onClose}>取消</Button><Button type="primary" loading={submitting} onClick={() => form.submit()}>{type === 'update' ? '保存修改' : '创建负责人'}</Button></div>}
+        >
+            <Form form={form} name="form_item_path" layout="vertical" onFinish={handleFormSubmit} className="wa-form">
+                <div className="wa-form-section-heading"><span>负责人信息</span><small>指定值班表的维护人，后续排班与交接均由该负责人管理。</small></div>
                 <MyFormItem name="name" label="名称"
                     rules={[
                         {
@@ -162,17 +173,6 @@ export const CreateDutyModal = ({ visible, onClose, handleList, selectedRow, typ
                     </Select>
                 </Form.Item>
 
-                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                    <Button
-                        type="primary"
-                        htmlType="submit"
-                        style={{
-                            backgroundColor: '#000000'
-                        }}
-                    >
-                        提交
-                    </Button>
-                </div>
             </Form>
         </Modal>
     )

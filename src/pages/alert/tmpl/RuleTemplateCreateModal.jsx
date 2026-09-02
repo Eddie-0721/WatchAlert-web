@@ -353,13 +353,15 @@ const RuleTemplateCreateModal = ({ visible, onClose, selectedRow, type, handleLi
 
     return (
         <Modal
+            title={type === 'update' ? '编辑告警模板' : type === 'view' ? '查看告警模板' : '创建告警模板'}
             visible={visible}
             onCancel={onClose}
             footer={null}
+            className="wa-form-modal"
             bodyStyle={{ overflowY: 'auto', maxHeight: '600px' }} // 设置最大高度并支持滚动
             width={1080} // 设置Modal窗口宽度
         >
-            <Form form={form} name="form_item_path" layout="vertical" onFinish={handleFormSubmit}>
+            <Form form={form} name="form_item_path" layout="vertical" onFinish={handleFormSubmit} className="wa-form">
                 <div>
                     <strong style={{fontSize: '20px'}}>基础配置</strong>
                     <div style={{display: 'flex'}}>

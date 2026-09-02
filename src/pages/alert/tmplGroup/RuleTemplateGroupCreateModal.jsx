@@ -87,8 +87,9 @@ const RuleTemplateGroupCreateModal = ({ visible, onClose, selectedRow, openType,
 
     return (
         
-        <Modal visible={visible} onCancel={onClose} footer={null}>
-            <Form form={form} name="form_item_path" layout="vertical" onFinish={handleFormSubmit}>
+        <Modal title={openType === 'update' ? '编辑模板组' : '创建模板组'} visible={visible} onCancel={onClose} footer={null} className="wa-form-modal">
+            <Form form={form} name="form_item_path" layout="vertical" onFinish={handleFormSubmit} className="wa-form">
+                <div className="wa-form-section-heading"><span>模板组信息</span><small>将相同服务或数据源类型的模板集中管理。</small></div>
                 <MyFormItem name="name" label="名称"
                     rules={[{required: true}]}
                 >

@@ -80,8 +80,9 @@ export const AlertRuleGroupCreateModal = ({ visible, onClose, selectedRow, type,
     }
 
     return (
-        <Modal visible={visible} onCancel={onClose} footer={null}>
-            <Form form={form} name="form_item_path" layout="vertical" onFinish={handleFormSubmit}>
+        <Modal title={type === 'update' ? '编辑告警规则组' : '创建告警规则组'} visible={visible} onCancel={onClose} footer={null} className="wa-form-modal">
+            <Form form={form} name="form_item_path" layout="vertical" onFinish={handleFormSubmit} className="wa-form">
+                <div className="wa-form-section-heading"><span>规则组信息</span><small>规则组用于组织同一业务或场景下的告警规则。</small></div>
                 <MyFormItem name="name" label="名称"
                     rules={[
                         {

@@ -823,7 +823,14 @@ export const CreateDatasourceModal = ({ visible, onClose, selectedRow, type, han
     }
 
     return (
-        <Drawer title="创建数据源" open={visible} onClose={onClose} size="large" footer={renderFooterButtons()}>
+        <Drawer
+            title={<div className="wa-form-drawer-title"><span>创建数据源</span><small>选择数据源类型后，补全连接信息与采集范围。</small></div>}
+            open={visible}
+            onClose={onClose}
+            className="wa-form-drawer"
+            size="large"
+            footer={<div className="wa-form-drawer-footer">{renderFooterButtons()}</div>}
+        >
             <Steps
                 current={currentStep}
                 items={[

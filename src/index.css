@@ -165,6 +165,12 @@ button, input, textarea, select { font: inherit; }
 .wa-form-drawer-title > small { color: #71717a; font-size: 11px; font-weight: 400; }
 .wa-form-drawer-footer { display: flex; justify-content: flex-end; gap: 8px; }
 .wa-form-drawer-footer .ant-btn { min-width: 88px; }
+.wa-form-modal .ant-modal-header { padding: 18px 20px; }
+.wa-form-modal .ant-modal-title { color: #18181b; font-size: 14px; font-weight: 680; }
+.wa-form-modal .ant-modal-body { padding: 22px 20px 6px; }
+.wa-form-modal .ant-modal-footer { padding: 13px 20px; }
+.wa-form-modal-footer { display: flex; justify-content: flex-end; gap: 8px; }
+.wa-form-modal-footer .ant-btn { min-width: 88px; }
 .wa-form-section-heading { display: flex; flex-direction: column; gap: 4px; margin-bottom: 18px; }
 .wa-form-section-heading > span { color: #18181b; font-size: 13px; font-weight: 680; }
 .wa-form-section-heading > small { color: #71717a; font-size: 11px; line-height: 1.55; }
