@@ -99,7 +99,11 @@ export const CreateSilenceModal = ({
             if (isUpdate) await updateSilence({ ...params, id: selectedRow.id })
             else await createSilence(params)
             await handleList?.()
+            message.success(isUpdate ? '静默规则已更新' : '静默规则已创建')
             onClose()
+        } catch (error) {
+            console.error('Unable to save silence rule:', error)
+            message.error(error?.response?.data?.data || error?.message || '静默规则保存失败，请稍后重试')
         } finally {
             setLoading(false)
         }
@@ -118,6 +122,7 @@ export const CreateSilenceModal = ({
             onClose={onClose}
             className="wa-form-drawer wa-silence-drawer"
             width={680}
+            zIndex={1200}
             destroyOnClose
             footer={<div className="wa-form-drawer-footer"><Button onClick={onClose}>取消</Button><Button type="primary" loading={loading} onClick={() => form.submit()}>{isUpdate ? '保存修改' : '创建静默'}</Button></div>}
         >

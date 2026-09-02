@@ -6,6 +6,7 @@ import { FaultCenterList } from '../../api/faultCenter';
 import { getCurEventList, getHisEventList, ProcessAlertEvent } from '../../api/event';
 import { FormatTime } from '../../utils/lib';
 import { buildSilenceContext, getAlertScope, importantScopeLabels, scopeName, scopeResource } from '../../utils/alertScope';
+import { CreateSilenceModal } from '../silence/SilenceRuleCreateModal';
 import './index.css';
 
 const levelClass = value => ({ P0: 'critical', P1: 'warning', P2: 'info' }[value] || 'info');
@@ -62,6 +63,8 @@ export const AlertStream = () => {
     const [service, setService] = useState();
     const [loading, setLoading] = useState(true);
     const [historyLoading, setHistoryLoading] = useState(false);
+    const [silenceContext, setSilenceContext] = useState(null);
+    const [silenceVisible, setSilenceVisible] = useState(false);
     const activeCenterId = centerId === 'all' ? undefined : centerId;
 
     const loadCenters = useCallback(async () => {
@@ -132,6 +135,15 @@ export const AlertStream = () => {
         } catch (error) { message.error('认领告警失败'); }
     };
 
+    const openSilence = () => {
+        if (!selected) return;
+        setSilenceContext(buildSilenceContext(selected, {
+            faultCenterId: selected.faultCenterId || activeCenterId,
+            faultCenterName: selectedCenterName,
+        }));
+        setSilenceVisible(true);
+    };
+
     const selectedScope = selected ? getAlertScope(selected) : {};
     const selectedCenterName = selected?.faultCenterName || centers.find(center => center.id === selected?.faultCenterId)?.name || '-';
 
@@ -172,7 +184,7 @@ export const AlertStream = () => {
                     <div className="alert-detail-kicker"><Tag color={selected.severity === 'P0' ? 'error' : selected.severity === 'P1' ? 'warning' : 'processing'}>{selected.severity || 'P2'}</Tag><StateBadges event={selected} /></div>
                     <h2>{selected.rule_name || selected.ruleName}</h2>
                     <p>{selected.annotations || '该事件暂未提供额外说明。'}</p>
-                    {queue !== 'history' && <div className="alert-detail-actions"><Button type="primary" icon={<Check size={15} />} onClick={claimEvent} disabled={acknowledgedOf(selected)}>{acknowledgedOf(selected) ? '已认领' : '认领告警'}</Button><Button icon={<BellOff size={15} />} onClick={() => navigate('/silenceRules', { state: { silenceContext: buildSilenceContext(selected, { faultCenterId: selected.faultCenterId || activeCenterId, faultCenterName: selectedCenterName }) } })}>创建静默</Button></div>}
+                    {queue !== 'history' && <div className="alert-detail-actions"><Button type="primary" icon={<Check size={15} />} onClick={claimEvent} disabled={acknowledgedOf(selected)}>{acknowledgedOf(selected) ? '已认领' : '认领告警'}</Button><Button icon={<BellOff size={15} />} onClick={openSilence}>创建静默</Button></div>}
                     <section className="alert-ai-summary"><div><Sparkles size={15} /><strong>AI 分析入口</strong></div><p>将当前告警的规则、标签与事件上下文交给 Copilot，生成根因推断和下一步处置建议。</p><Button onClick={() => navigate('/copilot', { state: { event: selected } })}>继续分析</Button></section>
                     <section className="alert-detail-section"><h3>发生位置</h3><div className="alert-detail-grid">{[['环境', selectedScope.environment], ['服务', selectedScope.service], ['集群', selectedScope.cluster], ['命名空间', selectedScope.namespace], ['资源', selectedScope.resource], ['实例', selectedScope.instance], ['负责人', selectedScope.owner], ['故障中心', selectedCenterName]].map(([label, value]) => <div key={label}><span>{label}</span><strong>{value || '未标记'}</strong></div>)}</div></section>
                     <section className="alert-detail-section"><h3>事件上下文</h3><div className="alert-detail-grid"><div><span>数据源</span><strong>{selected.datasource_type || selected.datasourceType || '-'}</strong></div><div><span>规则 ID</span><strong>{selected.rule_id || selected.ruleId || '-'}</strong></div><div><span>指纹</span><strong>{selected.fingerprint || '-'}</strong></div><div><span>{queue === 'history' ? '恢复时间' : '首次发生'}</span><strong>{FormatTime(queue === 'history' ? selected.recover_time : selected.first_trigger_time || selected.tiggerTime)}</strong></div></div></section>
@@ -180,6 +192,15 @@ export const AlertStream = () => {
                     <section className="alert-detail-section"><h3>处置时间线</h3><div className="alert-timeline"><div><time>{FormatTime(selected.first_trigger_time || selected.tiggerTime)}</time><span /><p><strong>告警触发</strong>规则达到当前阈值。</p></div>{isRecovered(selected) ? <div><time>{FormatTime(selected.recover_time)}</time><span /><p><strong>告警恢复</strong>事件已离开活跃队列并进入历史记录。</p></div> : <div><time>现在</time><span /><p><strong>{silencedOf(selected) ? '通知已抑制' : acknowledgedOf(selected) ? '正在处理' : '等待处置'}</strong>{silencedOf(selected) ? '告警仍然存在，静默仅影响通知投递。' : '可以认领、创建静默或交给 Copilot 分析。'}</p></div>}</div></section>
                 </div>}
             </Drawer>
+            <CreateSilenceModal
+                visible={silenceVisible}
+                onClose={() => { setSilenceVisible(false); setSilenceContext(null); }}
+                type="create"
+                handleList={refresh}
+                faultCenterId={silenceContext?.faultCenterId}
+                silenceContext={silenceContext}
+                faultCenters={centers}
+            />
         </div>
     );
 };
