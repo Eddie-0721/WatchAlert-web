@@ -107,7 +107,7 @@ const UserCreateModal = ({ visible, onClose, selectedRow, type, handleList }) =>
     }
 
     return (
-        <Modal visible={visible} onCancel={onClose} footer={null}>
+        <Modal title={type === 'update' ? '编辑用户' : '创建用户'} visible={visible} onCancel={onClose} footer={null} className="wa-form-modal">
             <Form
                 form={form}
                 name="user_form" // 更改表单名称
@@ -115,7 +115,8 @@ const UserCreateModal = ({ visible, onClose, selectedRow, type, handleList }) =>
                 onFinish={handleFormSubmit}
                 labelCol={{ span: 5 }} // 默认标签宽度
                 wrapperCol={{ span: 20 }} // 默认输入框宽度
-                style={{ padding: "40px 24px" }}
+                className="wa-form"
+                style={{ padding: "12px 4px" }}
 
             >
                 <MyFormItem

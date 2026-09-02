@@ -1,4 +1,4 @@
-import {Modal, Form, Input, Button, Select, Drawer, Divider} from 'antd'
+import { Form, Input, Button, Select, Drawer, Divider } from 'antd'
 import React, { useState, useEffect } from 'react'
 import {FaultCenterCreate} from "../../api/faultCenter";
 import {getNoticeList} from "../../api/notice";
@@ -17,6 +17,7 @@ const MyFormItem = ({ name, ...props }) => {
 export const CreateFaultCenter = ({ visible, onClose, handleList }) => {
     const [form] = Form.useForm()
     const [noticeOptions, setNoticeOptions] = useState([]); // 通知对象列表
+    const [submitting, setSubmitting] = useState(false)
 
 
     useEffect(() => {
@@ -71,10 +72,13 @@ export const CreateFaultCenter = ({ visible, onClose, handleList }) => {
             recoverWaitTime: Number(values.recoverWaitTime),
         }
 
-        handleCreate(params)
-
-        // 关闭弹窗
-        onClose()
+        setSubmitting(true)
+        try {
+            await handleCreate(params)
+            onClose()
+        } finally {
+            setSubmitting(false)
+        }
     }
 
     // 获取通知对象列表
@@ -89,9 +93,16 @@ export const CreateFaultCenter = ({ visible, onClose, handleList }) => {
 
 
     return (
-        <Drawer title="创建故障中心" open={visible} onClose={onClose} footer={null} size={"large"}>
-            <strong style={{fontSize: '16px'}}>基础配置</strong>
-            <Form form={form} name="form_item_path" layout="vertical" onFinish={handleFormSubmit}>
+        <Drawer
+            title={<div className="wa-form-drawer-title"><span>创建故障中心</span><small>为一个业务域定义告警归属、通知策略与处置边界。</small></div>}
+            open={visible}
+            onClose={onClose}
+            className="wa-form-drawer"
+            size="large"
+            footer={<div className="wa-form-drawer-footer"><Button onClick={onClose}>取消</Button><Button type="primary" loading={submitting} onClick={() => form.submit()}>创建故障中心</Button></div>}
+        >
+            <Form form={form} name="form_item_path" layout="vertical" onFinish={handleFormSubmit} className="wa-form">
+                <div className="wa-form-section-heading"><span>基础配置</span><small>名称用于告警归属和筛选，建议使用业务或服务域名称。</small></div>
                 <MyFormItem name="name" label="名称"
                             rules={[
                                 {
@@ -105,13 +116,13 @@ export const CreateFaultCenter = ({ visible, onClose, handleList }) => {
                         onKeyPress={handleKeyPress}/>
                 </MyFormItem>
 
-                <MyFormItem name="description" label="描述">
-                    <Input/>
+                <MyFormItem name="description" label="描述" extra="简要说明这个故障中心覆盖的业务范围和责任边界。">
+                    <Input.TextArea rows={3} />
                 </MyFormItem>
 
                 <Divider />
 
-                <strong style={{fontSize: '16px'}}>通知策略</strong>
+                <div className="wa-form-section-heading"><span>通知策略</span><small>设置默认通知对象，以及不同告警等级的重复通知节奏。</small></div>
                 <MyFormItem
                     name="noticeIds"
                     label="通知对象"
@@ -198,17 +209,6 @@ export const CreateFaultCenter = ({ visible, onClose, handleList }) => {
                     />
                 </MyFormItem>
 
-                <div style={{display: 'flex', justifyContent: 'flex-end'}}>
-                    <Button
-                        type="primary"
-                        htmlType="submit"
-                        style={{
-                            backgroundColor: '#000000'
-                        }}
-                    >
-                        提交
-                    </Button>
-                </div>
             </Form>
         </Drawer>
     )
