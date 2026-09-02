@@ -155,6 +155,12 @@ export const SystemSettings = () => {
             const agentConfig = {
                 enable: res?.data?.agentConfig?.enable || false,
                 allowedTools: res?.data?.agentConfig?.allowedTools || [],
+                scope: {
+                    datasourceIds: res?.data?.agentConfig?.scope?.datasourceIds || [],
+                    environmentLabelKey: res?.data?.agentConfig?.scope?.environmentLabelKey || '',
+                    environments: res?.data?.agentConfig?.scope?.environments || [],
+                },
+                allowProductionWrite: res?.data?.agentConfig?.allowProductionWrite || false,
                 requireWriteConfirmation: true,
             };
 
@@ -679,6 +685,22 @@ export const SystemSettings = () => {
                                             { value: 'alerts.propose_claim', label: '生成告警认领预览（需确认）' },
                                         ]} />
                                     </MyFormItem>
+                                    <MyFormItemGroup prefix={['scope']}>
+                                        <MyFormItem name="datasourceIds" label="限定数据源 ID">
+                                            <Select mode="tags" tokenSeparators={[',', ' ']} placeholder="留空表示不按数据源限制" />
+                                        </MyFormItem>
+                                        <MyFormItem name="environmentLabelKey" label="环境 Label 键">
+                                            <Input placeholder="例如 environment；留空表示不按环境限制" />
+                                        </MyFormItem>
+                                        <MyFormItem name="environments" label="允许的环境">
+                                            <Select mode="tags" tokenSeparators={[',', ' ']} placeholder="例如 production、staging" />
+                                        </MyFormItem>
+                                    </MyFormItemGroup>
+                                    <p style={{margin: '-8px 0 16px', color: '#71717a', fontSize: 12}}>配置环境范围后，Copilot 会在后端强制过滤告警和 Prometheus 数据源；环境 Label 键与允许环境需要同时填写才生效。</p>
+                                    <MyFormItem name="allowProductionWrite" valuePropName="checked" label="允许生产环境操作预览">
+                                        <Switch />
+                                    </MyFormItem>
+                                    <p style={{margin: '-8px 0 16px', color: '#b45309', fontSize: 12}}>关闭时，生产 / prod 范围内的静默和认领预览会被后端拒绝。开启后仍必须由具备业务权限的用户人工确认。</p>
                                     <MyFormItem name="requireWriteConfirmation" valuePropName="checked" label="写操作确认">
                                         <Switch checked disabled />
                                     </MyFormItem>

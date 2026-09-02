@@ -5,7 +5,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { FaultCenterList } from '../../api/faultCenter';
 import { getCurEventList } from '../../api/event';
 import { ReqAiAnalyze } from '../../api/ai';
-import { confirmAgentAction, createAgentSession, getAgentCapabilities, sendAgentMessage } from '../../api/agent';
+import { confirmAgentAction, createAgentSession, getAgentCapabilities, streamAgentMessage } from '../../api/agent';
 import MarkdownRenderer from '../../utils/MarkdownRenderer';
 import './index.css';
 
@@ -91,6 +91,7 @@ export const Copilot = () => {
         setLoading(true);
         try {
             let reply;
+            let streamed = false;
             if (capabilities?.enabled) {
                 let activeSessionId = sessionId;
                 if (!activeSessionId) {
@@ -99,17 +100,34 @@ export const Copilot = () => {
                     if (!activeSessionId) throw new Error('Copilot 会话创建失败');
                     setSessionId(activeSessionId);
                 }
-                const response = await sendAgentMessage({ sessionId: activeSessionId, content, context: { selectedAlert: compactEvent(selectedEvent) } });
-                reply = { content: response?.data?.content || '暂未得到可用分析结果。请稍后重试。', evidence: parseEvidence(response?.data?.evidence) };
+                streamed = true;
+                let streamedContent = '';
+                let streamedReply = null;
+                let streamError = '';
+                setMessages(current => [...current, { role: 'assistant', content: '' }]);
+                await streamAgentMessage({ sessionId: activeSessionId, content, context: { selectedAlert: compactEvent(selectedEvent) } }, event => {
+                    if (event.type === 'delta' && event.delta) {
+                        streamedContent += event.delta;
+                        setMessages(current => current.map((item, index) => index === current.length - 1 ? { ...item, content: streamedContent } : item));
+                    } else if (event.type === 'done') {
+                        streamedReply = { content: event.content || streamedContent || '暂未得到可用分析结果。请稍后重试。', evidence: parseEvidence(event.evidence) };
+                    } else if (event.type === 'error') {
+                        streamError = event.message || 'Copilot 流式分析失败';
+                    }
+                });
+                if (streamError) throw new Error(streamError);
+                if (!streamedReply) throw new Error('Copilot 流式服务未返回完成结果');
+                reply = streamedReply;
+                if (!streamedContent) setMessages(current => current.map((item, index) => index === current.length - 1 ? { ...item, content: reply.content } : item));
             } else {
                 reply = await sendLegacyMessage(content);
             }
             setToolEvidence(reply.evidence || []);
-            setMessages(current => [...current, { role: 'assistant', content: reply.content, evidence: reply.evidence }]);
+            if (!streamed) setMessages(current => [...current, { role: 'assistant', content: reply.content, evidence: reply.evidence }]);
         } catch (error) {
             console.error('Copilot request failed:', error);
             message.error(error?.message || '分析请求失败，请检查 Copilot 配置。');
-            setMessages(current => [...current, { role: 'assistant', content: '分析请求失败。请检查 Copilot 配置、权限及当前数据源后重试。' }]);
+            setMessages(current => current[current.length - 1]?.role === 'assistant' && !current[current.length - 1]?.content ? current.map((item, index) => index === current.length - 1 ? { ...item, content: '分析请求失败。请检查 Copilot 配置、权限及当前数据源后重试。' } : item) : [...current, { role: 'assistant', content: '分析请求失败。请检查 Copilot 配置、权限及当前数据源后重试。' }]);
         } finally { setLoading(false); }
     };
 
