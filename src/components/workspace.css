@@ -1,0 +1,56 @@
+/* Shared operational surfaces, loaded after page styles by the app entry. */
+.app-page-body > :is(.ops-overview, .alert-stream-page, .manage-page) {
+  width: 100%; max-width: none; margin: 0;
+  padding: var(--wa-page-padding) var(--wa-page-padding) 44px;
+}
+.app-page-body :is(.ops-overview__header, .alert-stream-header, .manage-page__header) h1 {
+  font-size: var(--wa-page-title); font-weight: 600; line-height: 1.3; letter-spacing: -.01em;
+}
+:is(.ops-overview__header, .alert-stream-header, .manage-page__header) p { font-size: 13px; line-height: 1.6; }
+.app-shell :is(button, a):focus-visible { outline: 2px solid #2563eb; outline-offset: 3px; }
+.app-shell :is(button, a) { touch-action: manipulation; }
+.app-shell button:disabled { cursor: not-allowed; }
+.app-shell :is(.ant-btn-default, .ant-btn-text).ant-btn-dangerous { color: #dc2626; }
+.app-shell .ant-btn-primary:disabled { color: #71717a; background: #f4f4f5; border-color: #e4e4e7; }
+.app-page-body .ant-pagination .ant-pagination-disabled { opacity: .6; }
+.app-page-body .ant-table-container { max-width: 100%; }
+.app-page-body :is(.ant-table-content, .ant-table-body) { overscroll-behavior-x: contain; }
+.app-page-body :is(.alert-event-main, .manage-row__main) small { font-size: 12px; }
+.app-page-body :is(.alert-state-badge, .alert-event-cell small) { font-size: 12px; }
+.app-page-body :is(.manage-summary span, .manage-section-head p) { font-size: 12px; color: #71717a; }
+.app-page-body :is(.manage-rule-routing small, .manage-rule-state small, .manage-rule-state .ant-tag, .manage-rule-result small) { font-size: 12px; }
+.app-page-body :is(.alert-event-scope strong, .alert-event-scope small, .alert-event-cell, .alert-stream-meta, .alert-queue-tabs button) { font-size: 12px; }
+.ant-drawer .alert-detail-section :is(div, span, strong) { min-width: 0; overflow-wrap: anywhere; }
+.ant-drawer .alert-detail-section :is(small, strong), .ant-drawer .alert-label-list :is(small, strong) { font-size: 12px; white-space: normal; }
+.wa-pagination { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 12px; padding: 20px 0; }
+.wa-pagination > span { margin-right: auto; color: #71717a; font-size: 12px; }
+.wa-page-error { margin-bottom: 18px; }
+.wa-page-links { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0; }
+
+/* Preserve validation and disabled semantics against historical input overrides. */
+:is(.app-page-body, .ant-modal, .ant-drawer) :is(.ant-input-status-error, .ant-input-affix-wrapper-status-error, .ant-picker-status-error, .ant-input-number-status-error),
+:is(.app-page-body, .ant-modal, .ant-drawer) .ant-select-status-error .ant-select-selector { border-color: #dc2626 !important; }
+:is(.app-page-body, .ant-modal, .ant-drawer) :is(.ant-input-status-warning, .ant-input-affix-wrapper-status-warning, .ant-picker-status-warning),
+:is(.app-page-body, .ant-modal, .ant-drawer) .ant-select-status-warning .ant-select-selector { border-color: #d97706 !important; }
+:is(.app-page-body, .ant-modal, .ant-drawer) :is(.ant-input-disabled, .ant-input-affix-wrapper-disabled, .ant-picker-disabled, .ant-input-number-disabled),
+:is(.app-page-body, .ant-modal, .ant-drawer) .ant-select-disabled .ant-select-selector { background: #f4f4f5 !important; color: #71717a; }
+.ant-modal-confirm .ant-modal-confirm-body-wrapper { padding: 20px; }
+.ant-modal-confirm .ant-modal-confirm-btns { margin-top: 20px; }
+
+@media (max-width: 768px) {
+  .app-content--flush { padding: 0; }
+  .app-page-body > :is(.ops-overview, .alert-stream-page, .manage-page) { padding-bottom: 84px; }
+  :is(.ops-overview__header, .alert-stream-header, .manage-page__header) { flex-wrap: wrap; gap: 16px; }
+  .ant-drawer-content-wrapper { max-width: 100vw; }
+  .wa-pagination .ant-pagination { flex-wrap: wrap; }
+}
+
+@media (max-width: 760px) {
+  .app-page-body .alert-event-row { grid-template-columns: 12px minmax(0, 1fr) 20px; gap: 8px 12px; }
+  .app-page-body .alert-event-main { grid-column: 2; grid-row: 1; }
+  .app-page-body .alert-event-dot { grid-column: 1; grid-row: 1; }
+  .app-page-body .alert-event-arrow { grid-column: 3; grid-row: 1; }
+  .app-page-body .alert-event-row > .alert-state-badges { display: flex; grid-column: 2; grid-row: 2; }
+  .app-page-body .alert-stream-meta { flex-wrap: wrap; }
+  .app-page-body .alert-stream-meta span:last-child { flex-basis: 100%; margin-left: 0; }
+}

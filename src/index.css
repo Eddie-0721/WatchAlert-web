@@ -3,8 +3,10 @@
 @tailwind utilities;
 
 :root {
+  --wa-page-padding: 32px;
+  --wa-page-title: 24px;
   color-scheme: light;
-  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-family: Geist, Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
   background: #fafafa;
   color: #18181b;
 }
@@ -32,7 +34,7 @@ button, input, textarea, select { font: inherit; }
 
 /* Shared visual language for every operational and administration surface. */
 .app-page-body { color: #27272a; }
-.app-page-body .ant-typography { color: inherit; }
+.app-page-body .ant-typography:not([class*="ant-typography-"]) { color: inherit; }
 .app-page-body .ant-card,
 .app-page-body .ant-collapse,
 .app-page-body .ant-descriptions,
@@ -79,8 +81,8 @@ button, input, textarea, select { font: inherit; }
 .app-page-body .ant-divider { border-color: #eeeeef; }
 
 .ant-btn { border-radius: 7px; font-weight: 600; box-shadow: none; }
-.ant-btn-primary { border-color: #18181b; background: #18181b; }
-.ant-btn-primary:hover, .ant-btn-primary:not(:disabled):hover { border-color: #3f3f46; background: #3f3f46; }
+.ant-btn-primary:not(.ant-btn-dangerous):not(:disabled) { border-color: #18181b; background: #18181b; color: #fff; }
+.ant-btn-primary:not(.ant-btn-dangerous):not(:disabled):hover { border-color: #3f3f46; background: #3f3f46; }
 .app-page-body .ant-btn-default { border-color: #dedee3; }
 .app-page-body .ant-btn-default:hover { color: #18181b; border-color: #a1a1aa; }
 .app-page-body .ant-btn-text { color: #71717a; }
@@ -97,7 +99,7 @@ button, input, textarea, select { font: inherit; }
 .app-page-body .ant-descriptions-view { border-color: #e7e7e9; border-radius: 9px; overflow: hidden; }
 .app-page-body .ant-descriptions-bordered .ant-descriptions-item-label { color: #71717a; font-size: 12px; background: #fafafa; }
 .app-page-body .ant-descriptions-bordered .ant-descriptions-item-content { font-size: 13px; }
-.app-page-body .ant-tag { padding: 1px 7px; color: #52525b; font-size: 11px; line-height: 20px; border-color: #dedee3; background: #fafafa; }
+.app-page-body .ant-tag { padding: 1px 7px; font-size: 12px; line-height: 20px; }
 .app-page-body .ant-badge-status-text { color: #52525b; font-size: 12px; }
 .app-page-body .ant-empty { padding: 42px 16px; color: #71717a; }
 .app-page-body .ant-result { padding: 48px 24px; }
@@ -210,9 +212,10 @@ button, input, textarea, select { font: inherit; }
 .wa-silence-note .ant-alert-message { color: #27272a; font-size: 12px; font-weight: 650; }
 .wa-silence-note .ant-alert-description { color: #71717a; font-size: 11px; line-height: 1.6; }
 
-.app-page-body [class*="CodeMirror"],
+.app-page-body .CodeMirror,
 .app-page-body .monaco-editor { border: 1px solid #e7e7e9; border-radius: 8px; overflow: hidden; }
 @media (max-width: 768px) {
+  :root { --wa-page-padding: 18px; --wa-page-title: 24px; }
   .app-page-body .ant-table-thead > tr > th, .app-page-body .ant-table-tbody > tr > td { padding-right: 10px; padding-left: 10px; }
   .app-page-body .ant-card-body { padding: 14px; }
   .ant-drawer .ant-drawer-body { padding: 14px; }

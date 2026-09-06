@@ -1,5 +1,6 @@
 import React, { useRef, useEffect } from 'react'
 import { DiffEditor } from '@monaco-editor/react'
+import '../monacoSetup';
 import { Spin } from 'antd'
 
 /**

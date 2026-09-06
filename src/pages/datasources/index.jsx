@@ -2,16 +2,16 @@ import React, { useState, useEffect } from 'react';
 import {Button, Input, Table, Tag, Popconfirm, Tooltip, Space, message, Dropdown, Modal} from 'antd';
 import { CreateDatasourceModal } from './DatasourceCreateModal';
 import { deleteDatasource, getDatasourceList } from '../../api/datasource';
-import { ReactComponent as PrometheusImg } from "../alert/rule/img/Prometheus.svg"
-import { ReactComponent as AlicloudImg } from "../alert/rule/img/alicloud.svg"
-import { ReactComponent as JaegerImg } from "../alert/rule/img/jaeger.svg"
-import { ReactComponent as AwsImg } from "../alert/rule/img/AWSlogo.svg"
-import { ReactComponent as LokiImg } from "../alert/rule/img/L.svg"
+import PrometheusImg from "../alert/rule/img/Prometheus.svg?react"
+import AlicloudImg from "../alert/rule/img/alicloud.svg?react"
+import JaegerImg from "../alert/rule/img/jaeger.svg?react"
+import AwsImg from "../alert/rule/img/AWSlogo.svg?react"
+import LokiImg from "../alert/rule/img/L.svg?react"
 
-import { ReactComponent as K8sImg } from "../alert/rule/img/Kubernetes.svg"
-import { ReactComponent as ESImg } from "../alert/rule/img/ElasticSearch.svg"
-import { ReactComponent as VLogImg } from "../alert/rule/img/victorialogs.svg"
-import { ReactComponent as CkImg } from "../alert/rule/img/clickhouse.svg"
+import K8sImg from "../alert/rule/img/Kubernetes.svg?react"
+import ESImg from "../alert/rule/img/ElasticSearch.svg?react"
+import VLogImg from "../alert/rule/img/victorialogs.svg?react"
+import CkImg from "../alert/rule/img/clickhouse.svg?react"
 import './index.css'
 import {CopyOutlined, DeleteOutlined, EditOutlined, PlusOutlined, MoreOutlined} from "@ant-design/icons";
 import { copyToClipboard } from "../../utils/copyToClipboard";

@@ -345,7 +345,7 @@ export const Probing = () => {
                 </div>
             </div>
 
-            <div style={{overflowX: 'auto', marginTop: 10, height: '76vh'}}>
+            <div style={{overflowX: 'auto', marginTop: 10}}>
                 <Table
                     columns={columns}
                     dataSource={dataList}

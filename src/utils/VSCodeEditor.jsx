@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react"
 import { Editor } from "@monaco-editor/react"
+import '../monacoSetup';
 import { Spin, Alert, Typography } from "antd"
 import { LoadingOutlined } from "@ant-design/icons"
 import { debounce } from "lodash-es"

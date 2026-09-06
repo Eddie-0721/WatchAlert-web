@@ -1,15 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Avatar, Dropdown, Spin, message } from 'antd';
+import { Avatar, Drawer, Dropdown, Spin, message } from 'antd';
 import {
     Activity, BellRing, BookOpenText, Bot, CalendarDays, ChartNoAxesCombined,
     ChevronDown, ChevronRight, Database, FileClock, Gauge, GitBranch,
     LayoutDashboard, LifeBuoy, LogOut, Network, RadioTower, ScrollText,
-    Settings, ShieldAlert, UsersRound, Workflow,
+    Settings, ShieldAlert, UsersRound, Workflow, Menu,
 } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { getUserInfo } from '../../api/user';
 import { getTenant, getTenantList } from '../../api/tenant';
 import './index.css';
+import { workspaceSection } from '../../utils/workspaceNavigation';
 
 const navigation = [
     {
@@ -44,6 +45,7 @@ const navigation = [
 
 const adminNavigation = [
     { label: '人员与权限', path: '/user', icon: UsersRound },
+    { label: '租户管理', path: '/tenants', icon: LayoutDashboard },
     { label: '日志审计', path: '/auditLog', icon: FileClock },
     { label: '系统设置', path: '/settings', icon: Settings },
 ];
@@ -55,6 +57,8 @@ export const ComponentSider = () => {
     const [tenants, setTenants] = useState([]);
     const [tenant, setTenant] = useState(null);
     const [expanded, setExpanded] = useState({});
+    const [mobileOpen, setMobileOpen] = useState(false);
+    useEffect(() => { setMobileOpen(false); }, [location.pathname, location.search]);
 
     useEffect(() => {
         let mounted = true;
@@ -94,10 +98,7 @@ export const ComponentSider = () => {
     ];
 
     const isActive = path => {
-        const pathname = path.split('?')[0];
-        if (pathname === '/') return location.pathname === '/';
-        if (pathname === '/manage') return location.pathname === '/manage' && location.search === path.slice(pathname.length);
-        return location.pathname.startsWith(pathname);
+        return workspaceSection(location.pathname, location.search) === path;
     };
     const activeAlertCount = 0;
 
@@ -105,12 +106,12 @@ export const ComponentSider = () => {
         return <aside className="wa-sider wa-sider--loading"><Spin size="small" /></aside>;
     }
 
-    return (
-        <aside className="wa-sider">
-            <div className="wa-sider-brand" onClick={() => navigate('/')} role="button" tabIndex={0}>
+    const content = (
+        <>
+            <button className="wa-sider-brand" onClick={() => navigate('/')} aria-label="WatchAlert 首页">
                 <span className="wa-sider-mark"><Activity size={15} /></span>
                 <span>WatchAlert</span>
-            </div>
+            </button>
 
             <Dropdown menu={{ items: tenantItems }} trigger={['click']} placement="bottomLeft">
                 <button className="wa-workspace-switcher">
@@ -127,7 +128,7 @@ export const ComponentSider = () => {
                         {group.items.map(item => {
                             const Icon = item.icon;
                             return (
-                                <button key={item.path} className={`wa-nav-item ${isActive(item.path) ? 'is-active' : ''} ${item.accent ? 'is-accent' : ''}`} onClick={() => navigate(item.path)}>
+                                <button key={item.path} title={item.label} aria-label={item.label} aria-current={isActive(item.path) ? 'page' : undefined} className={`wa-nav-item ${isActive(item.path) ? 'is-active' : ''} ${item.accent ? 'is-accent' : ''}`} onClick={() => navigate(item.path)}>
                                     <Icon size={16} />
                                     <span>{item.label}</span>
                                     {item.badge && activeAlertCount > 0 ? <b>{activeAlertCount}</b> : null}
@@ -142,7 +143,7 @@ export const ComponentSider = () => {
                         <div className="wa-nav-label">SYSTEM</div>
                         {adminNavigation.map(item => {
                             const Icon = item.icon;
-                            return <button key={item.path} className={`wa-nav-item ${isActive(item.path) ? 'is-active' : ''}`} onClick={() => navigate(item.path)}><Icon size={16} /><span>{item.label}</span></button>;
+                            return <button key={item.path} title={item.label} aria-label={item.label} aria-current={isActive(item.path) ? 'page' : undefined} className={`wa-nav-item ${isActive(item.path) ? 'is-active' : ''}`} onClick={() => navigate(item.path)}><Icon size={16} /><span>{item.label}</span></button>;
                         })}
                     </div>
                 )}
@@ -155,6 +156,10 @@ export const ComponentSider = () => {
                     <button className="wa-user-menu"><Avatar size={27}>{(user.username || 'U').slice(0, 1).toUpperCase()}</Avatar><span><strong>{user.username || '当前用户'}</strong><small>{user.role === 'admin' ? '管理员' : '成员'}</small></span><ChevronDown size={14} /></button>
                 </Dropdown>
             </div>
-        </aside>
+        </>
     );
+    return <>
+        <aside className="wa-sider">{content}<button className="wa-mobile-menu" aria-label="打开全部导航和账号菜单" onClick={() => setMobileOpen(true)}><Menu size={19} /></button></aside>
+        <Drawer className="wa-nav-drawer" title="工作区导航" placement="left" width={290} open={mobileOpen} onClose={() => setMobileOpen(false)}>{content}</Drawer>
+    </>;
 };

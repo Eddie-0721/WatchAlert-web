@@ -219,8 +219,8 @@ export const PromDoc = () =>{
 export const PrometheusPromQL = (props) => {
     const containerRef = useRef(null);
     const viewRef = useRef(null);
-    const queryHistory: string[] = [];
-    const executeQuery = (args?: any) => {
+    const queryHistory = [];
+    const executeQuery = (args) => {
         console.info(args);
     };
 
@@ -241,7 +241,7 @@ export const PrometheusPromQL = (props) => {
     },[props.value])
 
     // 监听编辑器更新事件
-    const updateListener = EditorView.updateListener.of((update: ViewUpdate): void => {
+    const updateListener = EditorView.updateListener.of((update) => {
         // 检查是否为用户输入事件
         if (update.docChanged) {
             const newContent = update.state.doc.toString();

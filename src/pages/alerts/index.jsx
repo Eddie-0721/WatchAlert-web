@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Button, Drawer, Empty, Input, Select, Spin, Tag, message } from 'antd';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Alert, Button, Drawer, Empty, Input, Pagination, Select, Spin, Tag, message } from 'antd';
 import { BellOff, Check, ChevronRight, Filter, Search, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { FaultCenterList } from '../../api/faultCenter';
@@ -65,74 +65,97 @@ export const AlertStream = () => {
     const [historyLoading, setHistoryLoading] = useState(false);
     const [silenceContext, setSilenceContext] = useState(null);
     const [silenceVisible, setSilenceVisible] = useState(false);
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(30);
+    const [total, setTotal] = useState(0);
+    const [historyTotal, setHistoryTotal] = useState(0);
+    const [summary, setSummary] = useState(null);
+    const [loadError, setLoadError] = useState('');
+    const [claiming, setClaiming] = useState(false);
+    const requestSequence = useRef(0);
+    const historySequence = useRef(0);
     const activeCenterId = centerId === 'all' ? undefined : centerId;
 
     const loadCenters = useCallback(async () => {
         const res = await FaultCenterList();
+        if (res?.code !== 200) throw new Error('加载故障中心失败');
         setCenters(res?.data || []);
     }, []);
 
     const eventParams = useMemo(() => ({
         faultCenterId: activeCenterId,
-        index: 1,
-        size: 100,
+        index: page,
+        size: pageSize,
         query: query || undefined,
         severity: severity || undefined,
         environment: environment || undefined,
         service: service || undefined,
-    }), [activeCenterId, query, severity, environment, service]);
+    }), [activeCenterId, query, severity, environment, service, page, pageSize]);
 
     const loadEvents = useCallback(async () => {
+        const request = ++requestSequence.current;
         try {
             setLoading(true);
-            const res = await getCurEventList(eventParams);
+            setLoadError('');
+            const res = await getCurEventList({ ...eventParams, queue: queue === 'history' ? 'all' : queue, includeSummary: true });
+            if (request !== requestSequence.current) return;
+            if (res?.code !== 200) throw new Error('加载告警失败');
             setEvents((res?.data?.list || []).filter(event => !isRecovered(event)));
+            setTotal(res?.data?.total || 0);
+            setSummary(res?.data?.summary || null);
         } catch (error) {
+            if (request !== requestSequence.current) return;
             console.error('Unable to load alert stream:', error);
-            message.error('加载告警失败');
-        } finally { setLoading(false); }
-    }, [eventParams]);
+            setLoadError('加载告警失败，请重试。');
+        } finally { if (request === requestSequence.current) setLoading(false); }
+    }, [eventParams, queue]);
 
     const loadHistory = useCallback(async () => {
+        const request = ++historySequence.current;
         try {
             setHistoryLoading(true);
-            const res = await getHisEventList(eventParams);
-            setHistoryEvents((res?.data?.list || [])
-                .filter(event => matchesScope(event, environment, service))
-                .map(event => ({ ...event, lifecycle_status: 'recovered' })));
+            setLoadError('');
+            const res = await getHisEventList({ ...eventParams, environment: undefined, service: undefined });
+            if (request !== historySequence.current) return;
+            if (res?.code !== 200) throw new Error('加载历史事件失败');
+            setHistoryEvents((res?.data?.list || []).map(event => ({ ...event, lifecycle_status: 'recovered' })));
+            setHistoryTotal(res?.data?.total || 0);
         } catch (error) {
+            if (request !== historySequence.current) return;
             console.error('Unable to load alert history:', error);
-            message.error('加载历史事件失败');
-        } finally { setHistoryLoading(false); }
-    }, [eventParams, environment, service]);
+            setLoadError('加载历史事件失败，请重试。');
+        } finally { if (request === historySequence.current) setHistoryLoading(false); }
+    }, [eventParams]);
 
     useEffect(() => { loadCenters().catch(() => message.error('加载故障中心失败')); }, [loadCenters]);
-    useEffect(() => { loadEvents(); }, [loadEvents]);
-    useEffect(() => { if (queue === 'history') loadHistory(); }, [loadHistory, queue]);
+    useEffect(() => { if (queue !== 'history') loadEvents(); return () => { requestSequence.current++; }; }, [loadEvents, queue]);
+    useEffect(() => { if (queue === 'history') loadHistory(); return () => { historySequence.current++; }; }, [loadHistory, queue]);
     useEffect(() => { setSelected(null); }, [queue, centerId, environment, service]);
 
-    const environmentOptions = useMemo(() => uniqueOptions(events.map(event => getAlertScope(event).environment)), [events]);
-    const serviceOptions = useMemo(() => uniqueOptions(events.map(event => getAlertScope(event).service)), [events]);
+    const environmentOptions = useMemo(() => uniqueOptions([...(summary?.environments || events.map(event => getAlertScope(event).environment)), environment]), [events, summary, environment]);
+    const serviceOptions = useMemo(() => uniqueOptions([...(summary?.services || events.map(event => getAlertScope(event).service)), service]), [events, summary, service]);
     const counts = useMemo(() => queueDefinitions.reduce((result, item) => {
-        result[item.key] = item.key === 'history' ? historyEvents.length : events.filter(event => belongsToQueue(event, item.key)).length;
+        result[item.key] = item.key === 'history' ? historyTotal : summary?.queues?.[item.key];
         return result;
-    }, {}), [events, historyEvents]);
+    }, {}), [summary, historyTotal]);
     const visibleEvents = useMemo(() => queue === 'history' ? historyEvents : events.filter(event => belongsToQueue(event, queue)), [events, historyEvents, queue]);
     const currentLoading = queue === 'history' ? historyLoading : loading;
 
     const refresh = () => {
-        loadEvents();
-        if (queue === 'history') loadHistory();
+        if (queue === 'history') loadHistory(); else loadEvents();
     };
 
     const claimEvent = async () => {
-        if (!selected) return;
+        if (!selected || claiming) return;
         try {
-            await ProcessAlertEvent({ state: 1, faultCenterId: selected.faultCenterId || activeCenterId, fingerprints: [selected.fingerprint] });
+            setClaiming(true);
+            const response = await ProcessAlertEvent({ state: 1, faultCenterId: selected.faultCenterId || activeCenterId, fingerprints: [selected.fingerprint] });
+            if (response?.code !== 200) throw new Error('认领失败');
             message.success('告警已认领');
             setSelected(current => ({ ...current, acknowledged: true, status: 'processing', confirmState: { ...(current.confirmState || {}), isOk: true } }));
             setEvents(current => current.map(event => event.fingerprint === selected.fingerprint ? { ...event, acknowledged: true, status: 'processing', confirmState: { ...(event.confirmState || {}), isOk: true } } : event));
-        } catch (error) { message.error('认领告警失败'); }
+            loadEvents();
+        } catch (error) { message.error('认领告警失败'); } finally { setClaiming(false); }
     };
 
     const openSilence = () => {
@@ -154,18 +177,19 @@ export const AlertStream = () => {
                 <div className="alert-stream-actions"><Button onClick={refresh}>刷新</Button><Button type="primary" icon={<Sparkles size={15} />} onClick={() => navigate('/copilot')}>在 Copilot 中分析</Button></div>
             </header>
             <nav className="alert-queue-tabs" aria-label="告警工作队列">
-                {queueDefinitions.map(item => <button key={item.key} className={queue === item.key ? 'is-active' : ''} onClick={() => setQueue(item.key)}><span>{item.label}</span>{item.key !== 'history' || counts.history > 0 ? <strong>{counts[item.key] || 0}</strong> : null}</button>)}
+                {queueDefinitions.map(item => <button key={item.key} aria-pressed={queue === item.key} className={queue === item.key ? 'is-active' : ''} onClick={() => { setQueue(item.key); setPage(1); setLoadError(''); }}><span>{item.label}</span>{counts[item.key] !== undefined && item.key !== 'history' ? <strong>{counts[item.key] || 0}</strong> : null}</button>)}
             </nav>
             <div className="alert-stream-toolbar">
-                <Input prefix={<Search size={15} />} allowClear placeholder="搜索告警、规则或标签" value={query} onChange={event => setQuery(event.target.value)} onPressEnter={queue === 'history' ? loadHistory : loadEvents} />
-                <Select value={centerId} onChange={setCenterId} options={[{ label: '全部故障中心', value: 'all' }, ...centers.map(item => ({ label: item.name, value: item.id }))]} />
-                <Select value={environment} allowClear onChange={setEnvironment} placeholder="全部环境" options={environmentOptions} />
-                <Select value={service} allowClear onChange={setService} placeholder="全部服务" options={serviceOptions} />
-                <Select value={severity} allowClear onChange={setSeverity} placeholder="全部级别" suffixIcon={<Filter size={14} />} options={[{ label: 'P0 · 严重', value: 'P0' }, { label: 'P1 · 警告', value: 'P1' }, { label: 'P2 · 提示', value: 'P2' }]} />
+                <Input prefix={<Search size={15} />} allowClear aria-label="搜索告警" placeholder="搜索告警、规则或标签" value={query} onChange={event => { setQuery(event.target.value); setPage(1); }} onPressEnter={refresh} />
+                <Select aria-label="故障中心" value={centerId} onChange={value => { setCenterId(value); setPage(1); }} options={[{ label: '全部故障中心', value: 'all' }, ...centers.map(item => ({ label: item.name, value: item.id }))]} />
+                <Select aria-label="环境" showSearch optionFilterProp="label" disabled={queue === 'history'} value={queue === 'history' ? undefined : environment} allowClear onChange={value => { setEnvironment(value); setPage(1); }} placeholder="全部环境" options={environmentOptions} />
+                <Select aria-label="服务" showSearch optionFilterProp="label" disabled={queue === 'history'} value={queue === 'history' ? undefined : service} allowClear onChange={value => { setService(value); setPage(1); }} placeholder="全部服务" options={serviceOptions} />
+                <Select aria-label="级别" value={severity} allowClear onChange={value => { setSeverity(value); setPage(1); }} placeholder="全部级别" suffixIcon={<Filter size={14} />} options={[{ label: 'P0 · 严重', value: 'P0' }, { label: 'P1 · 警告', value: 'P1' }, { label: 'P2 · 提示', value: 'P2' }]} />
             </div>
-            <div className="alert-stream-meta"><span>{queue === 'history' ? '历史事件' : '当前队列'}</span><strong>{visibleEvents.length}</strong><span>{queue === 'suppressed' ? '告警仍然存在；静默只会抑制通知投递。' : queue === 'history' ? '已恢复事件不会计入活跃告警。' : '点击事件查看位置、证据和处置状态。'}</span></div>
+            <div className="alert-stream-meta"><span>{queue === 'history' ? '历史事件' : '当前队列'}</span><strong>{currentLoading || loadError ? '—' : queue === 'history' ? historyTotal : total}</strong><span>{queue === 'suppressed' ? '告警仍然存在；静默只会抑制通知投递。' : queue === 'history' ? '历史查询暂不支持环境/服务筛选，可搜索标签关键字。' : '数量基于当前筛选条件；点击事件查看位置与处置状态。'}</span></div>
+            {loadError && <Alert className="wa-page-error" type="error" showIcon message={loadError} action={<Button onClick={refresh}>重试</Button>} />}
             <section className="alert-stream-list">
-                {currentLoading ? <div className="alert-stream-loading"><Spin /></div> : visibleEvents.length ? visibleEvents.map((event, index) => {
+                {currentLoading ? <div className="alert-stream-loading"><Spin /></div> : loadError ? null : visibleEvents.length ? visibleEvents.map((event, index) => {
                     const scope = getAlertScope(event);
                     const centerName = event.faultCenterName || centers.find(center => center.id === event.faultCenterId)?.name;
                     return <button className="alert-event-row" key={`${event.fingerprint || event.eventId}-${index}`} onClick={() => setSelected(event)}>
@@ -179,12 +203,13 @@ export const AlertStream = () => {
                     </button>;
                 }) : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={queue === 'history' ? '当前筛选条件下没有历史事件' : '当前队列没有需要展示的告警'} />}
             </section>
+            <div className="wa-pagination"><Pagination current={page} pageSize={pageSize} total={queue === 'history' ? historyTotal : total} disabled={currentLoading || Boolean(loadError)} showSizeChanger showTotal={value => `共 ${value} 条`} onChange={(nextPage, size) => { setPage(size !== pageSize ? 1 : nextPage); setPageSize(size); }} /></div>
             <Drawer title={null} open={Boolean(selected)} onClose={() => setSelected(null)} width={620} className="alert-detail-drawer">
                 {selected && <div className="alert-detail">
                     <div className="alert-detail-kicker"><Tag color={selected.severity === 'P0' ? 'error' : selected.severity === 'P1' ? 'warning' : 'processing'}>{selected.severity || 'P2'}</Tag><StateBadges event={selected} /></div>
                     <h2>{selected.rule_name || selected.ruleName}</h2>
                     <p>{selected.annotations || '该事件暂未提供额外说明。'}</p>
-                    {queue !== 'history' && <div className="alert-detail-actions"><Button type="primary" icon={<Check size={15} />} onClick={claimEvent} disabled={acknowledgedOf(selected)}>{acknowledgedOf(selected) ? '已认领' : '认领告警'}</Button><Button icon={<BellOff size={15} />} onClick={openSilence}>创建静默</Button></div>}
+                    {queue !== 'history' && <div className="alert-detail-actions"><Button type="primary" loading={claiming} icon={<Check size={15} />} onClick={claimEvent} disabled={acknowledgedOf(selected)}>{acknowledgedOf(selected) ? '已认领' : '认领告警'}</Button><Button icon={<BellOff size={15} />} onClick={openSilence}>创建静默</Button></div>}
                     <section className="alert-ai-summary"><div><Sparkles size={15} /><strong>AI 分析入口</strong></div><p>将当前告警的规则、标签与事件上下文交给 Copilot，生成根因推断和下一步处置建议。</p><Button onClick={() => navigate('/copilot', { state: { event: selected } })}>继续分析</Button></section>
                     <section className="alert-detail-section"><h3>发生位置</h3><div className="alert-detail-grid">{[['环境', selectedScope.environment], ['服务', selectedScope.service], ['集群', selectedScope.cluster], ['命名空间', selectedScope.namespace], ['资源', selectedScope.resource], ['实例', selectedScope.instance], ['负责人', selectedScope.owner], ['故障中心', selectedCenterName]].map(([label, value]) => <div key={label}><span>{label}</span><strong>{value || '未标记'}</strong></div>)}</div></section>
                     <section className="alert-detail-section"><h3>事件上下文</h3><div className="alert-detail-grid"><div><span>数据源</span><strong>{selected.datasource_type || selected.datasourceType || '-'}</strong></div><div><span>规则 ID</span><strong>{selected.rule_id || selected.ruleId || '-'}</strong></div><div><span>指纹</span><strong>{selected.fingerprint || '-'}</strong></div><div><span>{queue === 'history' ? '恢复时间' : '首次发生'}</span><strong>{FormatTime(queue === 'history' ? selected.recover_time : selected.first_trigger_time || selected.tiggerTime)}</strong></div></div></section>

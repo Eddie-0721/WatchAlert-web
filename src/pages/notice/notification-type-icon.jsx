@@ -1,12 +1,12 @@
-import { ReactComponent as FeiShuIcon } from "./img/feishu.svg"
-import { ReactComponent as DingdingIcon } from "./img/dingding.svg"
-import { ReactComponent as EmailIcon } from "./img/Email.svg"
-import { ReactComponent as WeChatIcon } from "./img/qywechat.svg"
-import { ReactComponent as WebHookIcon } from "./img/webhook.svg"
-import { ReactComponent as SlackIcon } from "./img/slack.svg"
-import { ReactComponent as PhoneIcon } from "./img/phone.svg"
-import { ReactComponent as SMSIcon } from "./img/sms.svg"
-import { ReactComponent as SREFlowIcon }  from "./img/sreflow.svg"
+import FeiShuIcon from "./img/feishu.svg?react"
+import DingdingIcon from "./img/dingding.svg?react"
+import EmailIcon from "./img/Email.svg?react"
+import WeChatIcon from "./img/qywechat.svg?react"
+import WebHookIcon from "./img/webhook.svg?react"
+import SlackIcon from "./img/slack.svg?react"
+import PhoneIcon from "./img/phone.svg?react"
+import SMSIcon from "./img/sms.svg?react"
+import SREFlowIcon from "./img/sreflow.svg?react"
 
 
 const NOTIFICATION_TYPES = {

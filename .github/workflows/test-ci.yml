@@ -1,11 +1,9 @@
 name: CI
 
 on:
-  push:
-    branches:
-      - '*/*'
-      - 'master'
+  workflow_dispatch:
 
+# Legacy upstream Docker Hub publishing is manual only. eddie uses ci.yml.
 jobs:
   build:
     runs-on: ubuntu-latest

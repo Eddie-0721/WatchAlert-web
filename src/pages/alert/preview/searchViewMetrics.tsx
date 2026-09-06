@@ -69,8 +69,8 @@ export const SearchViewMetrics = ({
             }
 
             if (res.data && Array.isArray(res.data) && res.data.length > 0) {
-                const processedResults = res.data.flatMap(r => 
-                    r.data?.result?.map(item => ({
+                const processedResults = res.data.flatMap((r: {data?: {result?: (MetricItem & {values?: [number, string][]})[]}}) =>
+                    r.data?.result?.map((item: MetricItem & {values?: [number, string][]}) => ({
                         ...item,
                         // 取最后一个值作为当前值
                         value: item.values && item.values.length > 0 
@@ -182,7 +182,7 @@ export const SearchViewMetrics = ({
             dataIndex: 'value',
             key: 'value',
             width: 200,
-            render: (value, record) => (
+            render: (value: string, record: {timestamp: string}) => (
                 <Space direction="vertical" size="small" style={{ width: '100%' }}>
                     <div>
                         <Text strong style={{ fontSize: '14px' }}>

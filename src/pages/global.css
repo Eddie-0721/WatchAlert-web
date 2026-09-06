@@ -10,10 +10,6 @@
     fill: white;
   }
 
-* {
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-}
 
 .font-bold {
     font-weight: 700;
@@ -43,11 +39,6 @@
 .flex {
     display: flex
 ;
-}
-
-* {
-    scrollbar-width: none;
-    -ms-overflow-style: none;
 }
 
 *, ::before, ::after {

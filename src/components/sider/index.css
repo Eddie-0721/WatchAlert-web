@@ -16,6 +16,9 @@
 .wa-sider--loading { align-items: center; justify-content: center; }
 
 .wa-sider-brand {
+  border: 0;
+  background: transparent;
+  text-align: left;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -76,9 +79,20 @@
   .wa-sider-brand { padding: 0 0 18px; }
   .wa-sider-brand > span:last-child, .wa-workspace-switcher, .wa-nav-label, .wa-nav-item span, .wa-nav-item b, .wa-sider-bottom { display: none; }
   .wa-nav-item { width: 40px; justify-content: center; padding: 0; }
-  .wa-navigation { margin-top: 0; overflow: visible; }
+  .wa-navigation { margin-top: 0; overflow-y: auto; }
   .wa-nav-group { margin: 0 0 12px; }
 }
+
+.wa-mobile-menu { display: none; border: 0; background: transparent; color: #52525b; border-radius: 7px; width: 40px; min-height: 40px; }
+@media (max-width: 900px) { .wa-mobile-menu { display: grid; place-items: center; flex: 0 0 40px; } }
+.wa-nav-drawer .ant-drawer-body { display: flex; flex-direction: column; padding: 16px; }
+.wa-nav-drawer .wa-navigation { flex: 1; display: block; overflow-y: auto; margin-top: 12px; }
+.wa-nav-drawer .wa-nav-group { display: block; margin: 12px 0 18px; }
+.wa-nav-drawer .wa-nav-label, .wa-nav-drawer .wa-nav-item span, .wa-nav-drawer .wa-sider-bottom { display: block; }
+.wa-nav-drawer .wa-nav-item { width: 100%; justify-content: flex-start; padding: 0 9px; }
+.wa-nav-drawer .wa-workspace-switcher { display: flex; }
+.wa-nav-drawer .wa-sider-brand { display: none; }
+.wa-nav-drawer .wa-nav-group:nth-of-type(n+2) { display: block; }
 
 @media (max-width: 600px) {
   .wa-sider { position: fixed; inset: auto 0 0; width: 100%; height: 58px; padding: 7px 12px; flex-basis: auto; flex-direction: row; justify-content: center; border-right: 0; border-top: 1px solid #e4e4e7; background: rgba(255,255,255,.94); backdrop-filter: blur(16px); }

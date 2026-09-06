@@ -23,4 +23,5 @@ build
 *.njsproj
 *.sln
 *.sw?
-yarn.lock
+test-results/
+playwright-report/

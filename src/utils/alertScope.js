@@ -48,7 +48,7 @@ export const importantScopeLabels = event => {
 };
 
 const uniqueMatchers = matchers => matchers.filter((matcher, index, source) =>
-    matcher?.key && matcher?.value && source.findIndex(item => item.key.toLowerCase() === matcher.key.toLowerCase()) === index,
+    matcher?.key && matcher?.value && source.findIndex(item => item?.key?.toLowerCase() === matcher.key.toLowerCase()) === index,
 );
 
 /**

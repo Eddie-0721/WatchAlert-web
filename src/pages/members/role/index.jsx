@@ -190,7 +190,7 @@ export const UserRole = () => {
                 handleList={handleList}
             />
 
-            <div style={{ overflowX: 'auto', marginTop: 10, height: '65vh' }}>
+            <div style={{ overflowX: 'auto', marginTop: 10 }}>
                 <Table
                     columns={columns}
                     dataSource={list}

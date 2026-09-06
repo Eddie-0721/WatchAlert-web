@@ -2,11 +2,11 @@ import {Button, Input, Table, Popconfirm, Space, Tooltip, Tag, Dropdown, Modal} 
 import React, { useState, useEffect } from 'react';
 import NoticeTemplateCreateModal from './NoticeTemplateCreateModal';
 import { getNoticeTmplList, deleteNoticeTmpl } from '../../../api/noticeTmpl';
-import { ReactComponent as FeiShuIcon } from '../img/feishu.svg';
-import { ReactComponent as DingdingIcon } from '../img/dingding.svg';
-import { ReactComponent as EmailIcon } from '../img/Email.svg';
-import { ReactComponent as WeChatIcon } from '../img/qywechat.svg'
-import { ReactComponent as SlackIcon } from '../img/slack.svg'
+import FeiShuIcon from '../img/feishu.svg?react';
+import DingdingIcon from '../img/dingding.svg?react';
+import EmailIcon from '../img/Email.svg?react';
+import WeChatIcon from '../img/qywechat.svg?react'
+import SlackIcon from '../img/slack.svg?react'
 import { DeleteOutlined, EditOutlined, PlusOutlined, CopyOutlined, MoreOutlined } from "@ant-design/icons";
 import {copyToClipboard} from "../../../utils/copyToClipboard";
 import {HandleShowTotal} from "../../../utils/lib";

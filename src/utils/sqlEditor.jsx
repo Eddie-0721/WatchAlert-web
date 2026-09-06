@@ -2,6 +2,7 @@
 
 import { useRef } from "react"
 import Editor from "@monaco-editor/react"
+import '../monacoSetup';
 
 const SqlEditor = ({ value = "", onChange = (value) => {}, height = "50px", readOnly = false }) => {
     const editorRef = useRef(null)

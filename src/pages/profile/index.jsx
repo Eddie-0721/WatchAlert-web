@@ -242,7 +242,7 @@ export default function Profile() {
     return (
         <>
             <Breadcrumb items={['个人中心']} />
-            <div className="container mx-auto p-4 mt-10">
+            <div className="w-full">
                 <Tabs defaultActiveKey="profile" items={[{
                     label: '个人信息',
                     key: 'profile',

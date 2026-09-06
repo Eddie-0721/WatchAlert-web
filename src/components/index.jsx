@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import { Button, Layout, Result, Spin } from 'antd';
 import { LeftOutlined, LoginOutlined } from '@ant-design/icons';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { workspaceParent } from '../utils/workspaceNavigation';
 import './index.css';
 import { ComponentSider } from './sider';
 import Auth from '../utils/Auth';
@@ -49,18 +50,21 @@ const pageDescriptions = {
 };
 
 const LegacyPageHeader = ({ name }) => {
+    const location = useLocation();
+    const navigate = useNavigate();
     const parts = name.split(' / ');
     const title = parts[parts.length - 1];
     return (
         <header className="legacy-page-header">
             <div className="legacy-page-header__eyebrow">{parts.slice(0, -1).join(' / ') || 'WATCHALERT'}</div>
             <div className="legacy-page-header__content">
-                {parts.length > 1 && <Button className="legacy-page-header__back" type="text" icon={<LeftOutlined />} onClick={() => window.history.back()} />}
+                {parts.length > 1 && workspaceParent(location.pathname) !== location.pathname && <Button className="legacy-page-header__back" type="text" aria-label="返回上级页面" icon={<LeftOutlined />} onClick={() => navigate(workspaceParent(location.pathname))} />}
                 <div>
                     <h1>{title}</h1>
                     <p>{pageDescriptions[name] || '集中查看并管理此工作区内容。'}</p>
                 </div>
             </div>
+            {['/user', '/userRole'].includes(location.pathname) && <nav className="wa-page-links" aria-label="人员与权限"><Button type={location.pathname === '/user' ? 'primary' : 'default'} onClick={() => navigate('/user')}>用户管理</Button><Button type={location.pathname === '/userRole' ? 'primary' : 'default'} onClick={() => navigate('/userRole')}>角色管理</Button></nav>}
         </header>
     );
 };
@@ -140,7 +144,7 @@ const Components = ({ name, c }) => {
             <Layout className="app-main-shell">
                 <Content ref={contentRef} className={`app-content ${name === 'off' ? 'app-content--flush' : ''}`}>
                     {name !== 'off' && <LegacyPageHeader name={name} />}
-                    <div className={name === 'off' ? 'app-page-body app-page-body--flush' : 'app-page-body'}>{c}</div>
+                    <div className={name === 'off' ? 'app-page-body app-page-body--flush' : 'app-page-body'}><Suspense fallback={<Spin tip="正在加载页面…"><div style={{ minHeight: 200 }} /></Spin>}>{c}</Suspense></div>
                 </Content>
                 <footer className="app-footer">WatchAlert · Operations intelligence for your team</footer>
             </Layout>

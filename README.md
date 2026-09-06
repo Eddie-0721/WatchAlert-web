@@ -1,70 +1,47 @@
-# Getting Started with Create React App
+# WatchAlert Web
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+React 18 + Ant Design 5 + Vite，逐步引入 TypeScript。生产稳定构建分支为 `eddie`。
 
-## Available Scripts
+## 开发与校验
 
-In the project directory, you can run:
+使用 Node.js 22（Vite 最低要求 22.12）或兼容版本，统一使用 npm 与已提交的 package-lock.json，不再使用 CRA / yarn 构建。
 
-### `npm start`
+```bash
+npm ci --no-audit
+npm start
+npm test
+npm run build
+npx playwright install chromium
+npm run test:ui
+```
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+开发端口 3000，API 默认代理至 http://localhost:9001。可通过 WATCHALERT_API_URL 环境变量指定开发后端。UI 测试使用 4187 端口和隔离的模拟 API，不访问生产。
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+`.npmrc` 默认使用国内 npmmirror；legacy-peer-deps 用于兼容遗留 React 组件的 peer 声明，不表示这些组件已全部现代化。生产依赖由 npm ci 固定，不在 Docker 构建时重新解析版本。
 
-### `npm test`
+## Docker 构建
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+```bash
+git switch eddie
+git pull --ff-only origin eddie
+docker build -t harbor.guardforceai.cn/other/watchalert-web:YOUR_RELEASE_TAG .
+```
 
-### `npm run build`
+默认基础镜像为 node:22-alpine 与 nginx:stable-alpine。如 Docker Hub 不可达，使用企业 Harbor 中实际存在的对应镜像：
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+```bash
+docker build --build-arg NODE_IMAGE=YOUR_INTERNAL_NODE_IMAGE --build-arg NGINX_IMAGE=YOUR_INTERNAL_NGINX_IMAGE --build-arg NPM_REGISTRY=https://registry.npmmirror.com -t harbor.guardforceai.cn/other/watchalert-web:YOUR_RELEASE_TAG .
+```
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+构建产物仍是 build/，容器 /app、80 端口及 /api 到 w8t-service:9001 的代理保持兼容。Dockerfile-nginx 与默认 Dockerfile 使用相同流程；Nginx 配置不依赖 Lua。npm 镜像站不能解决 Docker 基础镜像拉取问题，两者需要分别配置。
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+本次涉及告警队列汇总和 AI 权限校验，须协调更新后端；若使用 Copilot，Agent 服务也需更新。先在测试环境验收，镜像使用唯一 tag，保留旧镜像及配置用于回滚。
 
-### `npm run eject`
+## 设计与实施记录
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+- [Vercel 设计来源原文](DESIGN.md) / [MIT 授权](DESIGN.LICENSE)
+- [WatchAlert 场景适配](WATCHALERT-DESIGN.md)
+- [UX / AI 优化方案及批次](docs/UX-AI-OPTIMIZATION-2026-09.md)
+- [本次升级与验收说明](docs/RELEASE-2026-09.md)
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
-
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+GitHub 的 eddie / PR 流水线只执行校验，不自动发布到上游 Docker Hub。遗留分支发布流程已改为手动触发；生产 Harbor 发布由你现有流水线管理。

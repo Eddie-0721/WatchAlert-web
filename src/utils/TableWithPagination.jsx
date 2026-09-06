@@ -26,7 +26,7 @@ export const TableWithPagination = ({
   onPageChange,
   onPageSizeChange,
   scrollY,
-  rowKey,
+  rowKey = 'id',
   showTotal,
   loading,
   locale,
@@ -47,11 +47,13 @@ export const TableWithPagination = ({
       }}
     >
       <Table
+        loading={loading ?? false}
+        locale={locale}
         columns={columns}
         dataSource={dataSource}
         pagination={false}
         scroll={{
-          y: scrollY,
+          y: typeof scrollY === 'number' ? Math.max(200, scrollY) : scrollY,
           x: 'max-content',
         }}
         style={{
@@ -96,11 +98,10 @@ export const TableWithPagination = ({
     >
       <Pagination
         size="small"
-        loading={loading ?? false}
-        current={pagination.index ?? 1}
-        pageSize={pagination.size ?? 10}
+        current={pagination?.index ?? 1}
+        pageSize={pagination?.size ?? 10}
         total={pagination?.total ?? 0}
-        showTotal={showTotal}
+        showTotal={showTotal || (total => `共 ${total} 条`)}
         pageSizeOptions={['10', '30', '50', '100']}
         showSizeChanger
         onChange={onPageChange}
