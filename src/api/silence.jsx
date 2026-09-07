@@ -12,33 +12,11 @@ async function getSilenceList(params) {
     }
 }
 
-async function createSilence(params) {
-    try {
-        const res = await http('post', '/api/w8t/silence/silenceCreate', params);
-        message.open({
-            type: 'success',
-            content: '静默规则创建成功',
-        });
-        return res;
-    } catch (error) {
-        HandleApiError(error)
-        return error
-    }
-}
+const checked = res => {if(res?.code !== 200 && res?.code !== 0) throw new Error(typeof res?.data === 'string' ? res.data : res?.msg || '操作失败'); return res;};
+async function previewSilence(params) { return checked(await http('post','/api/w8t/silence/silencePreview',params)); }
 
-async function updateSilence(params) {
-    try {
-        const res = await http('post', '/api/w8t/silence/silenceUpdate', params);
-        message.open({
-            type: 'success',
-            content: '静默规则更新成功',
-        });
-        return res;
-    } catch (error) {
-        HandleApiError(error)
-        return error
-    }
-}
+async function createSilence(params) { return checked(await http('post','/api/w8t/silence/silenceCreate',params)); }
+async function updateSilence(params) { return checked(await http('post','/api/w8t/silence/silenceUpdate',params)); }
 
 async function deleteSilence(params) {
     try {
@@ -56,6 +34,7 @@ async function deleteSilence(params) {
 
 export {
     getSilenceList,
+    previewSilence,
     createSilence,
     updateSilence,
     deleteSilence

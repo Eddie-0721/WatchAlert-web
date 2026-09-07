@@ -35,3 +35,14 @@
  .copilot-turn { padding: 16px; }
  .copilot-composer-footer { align-items: flex-start; }
 }
+.copilot-diagnostics { margin:16px 0; font-size:12px; }
+.copilot-diagnostics > small { margin-left:12px; color:#4d4d4d; }
+.copilot-diagnostics ul { padding:0; list-style:none; max-width:720px; }
+.copilot-diagnostics li { display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; border-bottom:1px solid #ebebeb; padding:8px 0; }
+.copilot-diagnostics .ant-tag { white-space:normal; }
+.copilot-diagnostics p { color:#4d4d4d; }
+.copilot-time-window { display:flex; align-items:center; flex-wrap:wrap; gap:12px; margin-top:20px; font-size:13px; }
+.copilot-time-window .ant-select { min-width:160px; }
+.copilot-time-window small { color:#4d4d4d; }
+.copilot-scope .ant-btn { align-self:flex-start; }
+.copilot-action-summary { overflow-wrap:anywhere; font-size:13px; }

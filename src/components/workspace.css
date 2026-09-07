@@ -54,3 +54,10 @@
   .app-page-body .alert-stream-meta { flex-wrap: wrap; }
   .app-page-body .alert-stream-meta span:last-child { flex-basis: 100%; margin-left: 0; }
 }
+/* P1: explicit preflight, no extra stacked workspace panels. */
+.wa-silence-impact { padding:16px; border:1px solid #ebebeb; border-radius:8px; background:#fafafa; margin:16px 0; overflow-wrap:anywhere; }
+.wa-silence-impact h3 { margin:0 0 12px; font-size:16px; }
+.wa-silence-impact p,.wa-silence-impact li { font-size:13px; }
+.wa-silence-impact ul { padding-left:20px; }
+.wa-silence-impact .ant-alert { margin:12px 0; }
+.alert-refresh-status { display:flex; align-items:center; flex-wrap:wrap; gap:8px; font-size:12px; color:#4d4d4d; }

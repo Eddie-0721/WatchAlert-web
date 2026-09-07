@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useContext, useMemo } from 'react';
 import {Anchor, Button, Form, Input, Popconfirm, Typography, Radio, Segmented, Tabs, Switch, Select, message} from 'antd';
 import "./index.css";
+import ConnectionDiagnostics from "../copilot/ConnectionDiagnostics";
+import "../copilot/index.css";
 import { getSystemSetting, saveSystemSetting, syncLdapUser } from "../../api/settings";
 import TextArea from "antd/es/input/TextArea";
 import {getRoleList} from "../../api/role";
@@ -669,6 +671,8 @@ export const SystemSettings = () => {
 
                         <section id="copilot" style={{marginTop: "24px"}}>
                             <Typography.Title level={5}>Copilot Agent</Typography.Title>
+                            <p>诊断使用服务器已保存的配置；修改模型后请先保存，再重新诊断。</p>
+                            <ConnectionDiagnostics />
                             <p style={{margin: '-8px 0 16px', color: '#71717a', fontSize: 12}}>Copilot 只能使用此处允许的 Tool；用户还必须拥有对应的业务权限。静默和认领始终需要人工确认。</p>
                             <MyFormItemGroup prefix={['agentConfig']}>
                                 <MyFormItem name="enable" valuePropName="checked" label="启用 Copilot Agent">

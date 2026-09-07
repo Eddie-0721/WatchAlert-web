@@ -1,4 +1,5 @@
 export const workspaceSection = (pathname, search = '') => {
+    if (pathname.startsWith('/manage/')) return '/manage?tab=rules';
     if (pathname === '/manage') return `/manage?tab=${new URLSearchParams(search).get('tab') || 'rules'}`;
     if (/^\/(ruleGroup|tmplType)(\/|$)/.test(pathname)) return '/manage?tab=rules';
     if (/^\/(noticeObjects|noticeTemplate|noticeRecords|silenceRules)(\/|$)/.test(pathname)) return '/manage?tab=routes';

@@ -5,6 +5,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { workspaceParent } from '../utils/workspaceNavigation';
 import './index.css';
 import { ComponentSider } from './sider';
+import { useWorkspaceScroll } from '../utils/useWorkspaceScroll';
 import Auth from '../utils/Auth';
 import { getTenantList } from '../api/tenant';
 import { getUserInfo } from '../api/user';
@@ -80,6 +81,7 @@ const Components = ({ name, c }) => {
     const [state, setState] = useState({ loading: true, error: false });
     const contentRef = useRef(null);
     const location = useLocation();
+    useWorkspaceScroll(contentRef, location, !state.loading);
 
     useEffect(() => {
         let mounted = true;
@@ -116,12 +118,6 @@ const Components = ({ name, c }) => {
         return () => { mounted = false; };
     }, []);
 
-    useEffect(() => {
-        if (contentRef.current) {
-            contentRef.current.scrollTop = 0;
-            contentRef.current.scrollLeft = 0;
-        }
-    }, [location.pathname, location.search]);
 
     if (state.loading) return <LoadingScreen label="正在准备工作区…" />;
 

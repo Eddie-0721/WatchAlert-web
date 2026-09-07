@@ -36,6 +36,7 @@ const DataAnalysis = lazy(() => import('../pages/exploer').then(module => ({ def
 const PrometheusServiceDiscovery = lazy(() => import('../pages/promethues/sd').then(module => ({ default: module.PrometheusServiceDiscovery })));
 const AlertStream = lazy(() => import('../pages/alerts').then(module => ({ default: module.AlertStream })));
 const Copilot = lazy(() => import('../pages/copilot').then(module => ({ default: module.Copilot })));
+const RuleWorkflowPreview = lazy(() => import('../pages/manage/RuleWorkflowPreview'));
 const Manage = lazy(() => import('../pages/manage').then(module => ({ default: module.Manage })));
 
 // eslint-disable-next-line import/no-anonymous-default-export
@@ -51,6 +52,10 @@ export default [
     {
         path: '/copilot',
         element: <ComponentsContent name="off" c={<Copilot />} />,
+    },
+    {
+        path: '/manage/rule-workflow-preview',
+        element: <ComponentsContent name="off" c={<RuleWorkflowPreview />} />,
     },
     {
         path: '/manage',

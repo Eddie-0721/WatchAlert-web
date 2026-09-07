@@ -1,0 +1,16 @@
+.rule-workflow-preview { padding:var(--wa-page-padding); max-width:1200px; margin:auto; }
+.rule-workflow-preview header { display:flex; justify-content:space-between; gap:16px; margin-bottom:24px; }
+.rule-workflow-preview h1 { margin:0; font-size:24px; font-weight:600; }
+.rule-workflow-preview h2 { font-size:16px; font-weight:600; }
+.rule-workflow-preview p,.rule-workflow-preview small { color:#4d4d4d; }
+.rule-workflow-preview section { margin-top:24px; padding-top:16px; border-top:1px solid #ebebeb; }
+.rule-workflow-filters { display:flex; flex-wrap:wrap; align-items:center; gap:12px; margin:16px 0; }
+.rule-workflow-filters > .ant-input-group-wrapper { flex:1; min-width:180px; }
+.rule-workflow-filters > .ant-select { width:160px; }
+.rule-workflow-row { display:flex; align-items:center; flex-wrap:wrap; gap:16px; padding:16px; width:100%; background:#fff; border:1px solid #ebebeb; text-align:left; cursor:pointer; }
+.rule-workflow-row[aria-pressed="true"] { background:#f5f5f5; border-color:#a3a3a3; }
+.rule-workflow-row strong { margin-right:auto; }
+.rule-workflow-preview label { display:flex; flex-direction:column; gap:8px; margin:16px 0; }
+.rule-workflow-preview .ant-alert { margin:16px 0; }
+.rule-workflow-preview .ant-table-cell { overflow-wrap:anywhere; max-width:280px; white-space:pre-wrap; }
+@media(max-width:768px) { .rule-workflow-preview{padding:16px 16px 96px} .rule-workflow-preview header{flex-wrap:wrap} }

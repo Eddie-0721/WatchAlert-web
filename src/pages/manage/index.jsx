@@ -75,7 +75,7 @@ export const Manage = () => {
     <nav className="manage-tabs" aria-label="管理模块">{tabs.map(item => { const Icon = item.icon; return <button key={item.key} aria-pressed={tab === item.key} className={tab === item.key ? 'is-active' : ''} onClick={() => setParams({ tab: item.key })}><Icon size={15} />{item.label}</button>; })}</nav>
     {error && <Alert className="wa-page-error" type="error" showIcon message={error} action={<Button onClick={() => setRevision(value => value + 1)}>重试</Button>} />}
     {tab === 'rules' && <>
-      <nav className="wa-page-links" aria-label="规则维护入口"><Button onClick={() => navigate('/ruleGroup')}>规则组与批量维护</Button><Button onClick={() => navigate('/tmplType/Prometheus/group')}>规则模板</Button></nav>
+      <nav className="wa-page-links" aria-label="规则维护入口"><Button onClick={() => navigate('/manage/rule-workflow-preview')}>规则维护交互预览</Button><Button onClick={() => navigate('/ruleGroup')}>规则组与批量维护</Button><Button onClick={() => navigate('/tmplType/Prometheus/group')}>规则模板</Button></nav>
       {metaError && <Alert type="warning" message={metaError} />}
       <div className="manage-rule-filters">
         <Input.Search aria-label="搜索规则" prefix={<Search size={14} />} placeholder="搜索规则名称、ID 或说明" value={query} onChange={event => { setQuery(event.target.value); if (!event.target.value) filter(setSearch)(''); }} onSearch={filter(setSearch)} allowClear />

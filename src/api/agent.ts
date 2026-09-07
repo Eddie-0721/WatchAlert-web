@@ -54,3 +54,6 @@ export async function streamAgentMessage(body: unknown, onEvent: (event: StreamE
     if (buffer.trim()) { const event = parseStreamBlock(buffer); if (event) onEvent(event); }
   } finally { await reader.cancel().catch(() => {}); reader.releaseLock(); }
 }
+
+export interface AgentDiagnostics { checkedAt: number; checks: {id: string; status: string}[] }
+export const diagnoseAgent = () => request<AgentDiagnostics>('diagnostics', {});

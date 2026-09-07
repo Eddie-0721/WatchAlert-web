@@ -105,3 +105,111 @@ test('mobile alert rows do not overflow their scroll surface',async({page})=>{
   await expect(page.locator('.alert-event-row .alert-state-badges').first()).toBeVisible();
   await page.screenshot({animations:'disabled',path:'test-results/visual/alerts-mobile.png'});
 });
+
+test('alert URL, analysis time window and return preserve the working scene',async({page})=>{
+  await mockAPI(page);
+  await page.route('**/api/w8t/agent/sessionCreate',route=>route.fulfill({json:{code:200,data:{id:'new-session'}}}));
+  let submitted;
+  await page.route('**/api/w8t/agent/sessionMessageStream',async route=>{
+    submitted=route.request().postDataJSON();
+    await route.fulfill({contentType:'text/event-stream',body:'event: done\ndata: {"content":"测试分析结果","evidence":"[]"}\n\n'});
+  });
+  await page.goto('/alerts?environment=prod&service=payment&page=2');
+  await expect(page.locator('.alert-event-row')).toHaveCount(30);
+  await page.locator('.app-content').evaluate(el=>el.scrollTop=500);
+  await page.locator('.alert-event-row').nth(6).click();
+  const expectedURL=page.url();
+  const scroll=await page.locator('.app-content').evaluate(el=>el.scrollTop);
+  await page.getByRole('button',{name:'继续分析',exact:true}).click();
+  await expect(page.getByText('当前线索：支付延迟告警 37')).toBeVisible();
+  await page.locator('.copilot-time-window .ant-select-selector').click();
+  await page.locator('.ant-select-item-option').filter({hasText:'最近 1 小时'}).click();
+  await page.getByRole('textbox',{name:'输入问题'}).fill('分析这条告警');
+  await page.getByRole('button',{name:'发送',exact:true}).click();
+  await expect(page.getByText('测试分析结果')).toBeVisible();
+  expect(submitted.context.selectedAlert.fingerprint).toBe('fp-36');
+  expect(submitted.context.timeRange.end-submitted.context.timeRange.start).toBe(3600);
+  await page.getByRole('button',{name:'返回告警现场'}).click();
+  await expect(page).toHaveURL(expectedURL);
+  await expect(page.locator('.alert-detail h2')).toHaveText('支付延迟告警 37');
+  await expect.poll(()=>page.locator('.app-content').evaluate(el=>el.scrollTop)).toBe(scroll);
+  await page.getByRole('button',{name:'Close',exact:true}).click();
+  await page.reload();
+  await expect(page.locator('.alert-event-row').first()).toContainText('支付延迟告警 31');
+  await expect(page.locator('.alert-stream-toolbar .ant-select-selector').filter({has:page.getByRole('combobox',{name:'环境'})})).toContainText('prod');
+});
+
+test('silence requires a fresh preview and preserves draft on rejection',async({page})=>{
+  await mockAPI(page);
+  let previews=0,writes=0,lastWrite;
+  await page.route('**/silence/silencePreview',async route=>{
+    previews++;
+    await route.fulfill({json:{code:200,data:{previewHash:'hash-'+previews,previewAt:Math.floor(Date.now()/1000),total:2,samples:[{fingerprint:'fp-0',ruleName:'支付延迟告警 1',scope:{environment:'prod',service:'payment',resource:'pod-1'}}]}}});
+  });
+  await page.route('**/silence/silenceCreate',async route=>{
+    writes++;lastWrite=route.request().postDataJSON();
+    await route.fulfill({json:writes===1?{code:400,data:'匹配告警已变化，请重新预览并确认'}:{code:200,data:{id:'s-created'}}});
+  });
+  await page.goto('/alerts');
+  await page.locator('.alert-event-row').first().click();
+  await page.getByRole('button',{name:'创建静默',exact:true}).click();
+  await expect(page.locator('.alert-detail-drawer')).not.toBeVisible();
+  await expect(page.getByRole('button',{name:/仅当前资源/})).toHaveClass(/is-active/);
+  await page.getByRole('textbox',{name:'静默原因'}).fill('计划发布，值班人员持续关注');
+  await page.getByRole('button',{name:'预览影响范围'}).click();
+  await expect(page.getByRole('region',{name:'静默影响预览'})).toContainText('当前匹配 2 条告警');
+  expect(writes).toBe(0);
+  await page.getByRole('textbox',{name:'静默名称'}).fill('修改后的静默');
+  await expect(page.getByRole('button',{name:'确认执行静默'})).toHaveCount(0);
+  await page.getByRole('button',{name:'预览影响范围'}).click();
+  await page.getByRole('button',{name:'确认执行静默'}).click();
+  await expect(page.getByText('匹配告警已变化，请重新预览并确认').first()).toBeVisible();
+  await expect(page.getByRole('textbox',{name:'静默名称'})).toHaveValue('修改后的静默');
+  await expect(page.getByRole('button',{name:'确认执行静默'})).toHaveCount(0);
+  await page.getByRole('button',{name:'预览影响范围'}).click();
+  await page.getByRole('button',{name:'确认执行静默'}).click();
+  await expect(page.getByText('静默规则已保存',{exact:true})).toBeInViewport();
+  expect(lastWrite.previewHash).toBe('hash-3');expect(writes).toBe(2);
+  await page.screenshot({animations:'disabled',path:'test-results/visual/silence-saved.png'});
+});
+
+test('silence preview failure cannot become a silent write',async({page})=>{
+  await mockAPI(page);const writes=[];
+  page.on('request',req=>{if(req.url().endsWith('/silenceCreate'))writes.push(req.url())});
+  await page.route('**/silence/silencePreview',route=>route.fulfill({json:{code:400,data:'无权预览，请联系管理员'}}));
+  await page.goto('/alerts');await page.locator('.alert-event-row').first().click();
+  await page.getByRole('button',{name:'创建静默',exact:true}).click();
+  await page.getByRole('textbox',{name:'静默原因'}).fill('维护');
+  await page.getByRole('button',{name:'预览影响范围'}).click();
+  await expect(page.getByText('无权预览，请联系管理员').first()).toBeVisible();
+  await expect(page.getByRole('button',{name:'确认执行静默'})).toHaveCount(0);
+  expect(writes).toEqual([]);
+});
+
+test('diagnostics run explicitly and display degraded checks, not a false global success',async({page})=>{
+  await mockAPI(page);let probes=0;
+  await page.route('**/agent/diagnostics',async route=>{probes++;await route.fulfill({json:{code:200,data:{checkedAt:1788700000,checks:[{id:'runtime',status:'ok'},{id:'gateway',status:'unavailable'},{id:'model',status:'unauthorized'}]}}})});
+  await page.goto('/copilot');expect(probes).toBe(0);
+  await page.getByRole('button',{name:'连接诊断',exact:true}).click();
+  await expect(page.getByText('认证失败，请检查凭据')).toBeVisible();
+  await expect(page.getByText('不可用，请检查连接或服务日志')).toBeVisible();
+  expect(probes).toBe(1);
+  await page.screenshot({animations:'disabled',path:'test-results/visual/copilot-diagnostics.png'});
+});
+
+for(const width of [1440,390]) test(`rule prototype at ${width}px never writes production configuration`,async({page})=>{
+  await mockAPI(page);await page.setViewportSize({width,height:900});const writes=[];
+  page.on('request',req=>{if(req.method()==='POST'&&req.url().includes('/api/'))writes.push(req.url())});
+  await page.goto('/manage/rule-workflow-preview');
+  await page.getByRole('button',{name:/支付接口错误率/}).click();
+  await page.getByRole('textbox',{name:'演示规则名称'}).fill('支付接口错误率（修改草稿）');
+  await expect(page.getByRole('button',{name:'预览变更'})).toBeDisabled();
+  await page.getByRole('button',{name:'演示测试步骤'}).click();
+  await page.getByRole('button',{name:'预览变更'}).click();
+  await expect(page.getByText('涉及生产环境：请核对通知影响')).toBeVisible();
+  await page.getByRole('button',{name:'保存演示草稿'}).click();
+  await expect(page.getByText('演示草稿已保留在当前页面，未修改真实规则')).toBeInViewport();
+  expect(writes).toEqual([]);
+  expect(await page.locator('.app-content').evaluate(el=>el.scrollWidth<=el.clientWidth)).toBeTruthy();
+  await page.screenshot({animations:'disabled',path:`test-results/visual/rule-workflow-${width}.png`});
+});

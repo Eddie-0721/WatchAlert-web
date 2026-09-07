@@ -1,10 +1,10 @@
 "use client"
 
 import { Alert, Button, DatePicker, Divider, Drawer, Form, Input, Select, Tag, message } from "antd"
-import React, { useCallback, useEffect, useMemo, useState } from "react"
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import dayjs from "dayjs"
 import { DeleteOutlined, PlusOutlined } from "@ant-design/icons"
-import { createSilence, updateSilence } from "../../api/silence"
+import { createSilence, updateSilence, previewSilence } from "../../api/silence"
 
 const { RangePicker } = DatePicker
 const emptyMatcher = () => ({ key: "", operator: "==", value: "" })
@@ -27,6 +27,14 @@ export const CreateSilenceModal = ({
 }) => {
     const [form] = Form.useForm()
     const [loading, setLoading] = useState(false)
+    const [preview,setPreview] = useState(null)
+    const [saved,setSaved] = useState(null)
+    const [previewError,setPreviewError] = useState('')
+    const revision=useRef(0)
+    const invalidatePreview=()=>{revision.current++;setPreview(null);setPreviewError('')}
+    const drawerRef=useRef(null)
+    const savedRef=useRef(null)
+    useEffect(()=>{if(saved){const frame=requestAnimationFrame(()=>savedRef.current?.scrollIntoView({block:"start"}));return ()=>cancelAnimationFrame(frame)}},[saved])
     const [scopeMode, setScopeMode] = useState('service')
     const labels = Form.useWatch('labels', form) || []
     const timeRange = Form.useWatch('timeRange', form)
@@ -42,12 +50,14 @@ export const CreateSilenceModal = ({
     }), [silenceContext])
 
     const applyScope = useCallback((nextScope) => {
+        invalidatePreview()
         setScopeMode(nextScope)
         const nextMatchers = options[nextScope] || []
         form.setFieldsValue({ labels: nextMatchers.length ? nextMatchers : [emptyMatcher()] })
     }, [form, options])
 
     useEffect(() => {
+        invalidatePreview(); setSaved(null)
         if (!visible) return
         if (isUpdate && selectedRow) {
             form.setFieldsValue({
@@ -61,18 +71,20 @@ export const CreateSilenceModal = ({
             return
         }
 
-        const defaultMatchers = options.service?.length ? options.service : [emptyMatcher()]
+        const precise = options.resource?.length > options.service?.length
+        const defaultMatchers = precise ? options.resource : options.service?.length ? options.service : [emptyMatcher()]
         form.setFieldsValue({
             name: hasContext ? contextTitle(silenceContext) : '',
-            comment: hasContext ? `来自告警「${silenceContext.alertName}」，请补充本次静默的处置原因。` : '',
+            comment: '',
             faultCenterId: effectiveCenterId,
             labels: defaultMatchers,
             timeRange: defaultRange(),
         })
-        setScopeMode('service')
-    }, [effectiveCenterId, form, hasContext, isUpdate, options.service, selectedRow, silenceContext, visible])
+        setScopeMode(precise ? 'resource' : 'service')
+    }, [effectiveCenterId, form, hasContext, isUpdate, options.service, options.resource, selectedRow, silenceContext, visible])
 
     const selectDuration = hours => {
+        invalidatePreview()
         const start = dayjs()
         form.setFieldValue('timeRange', [start, start.add(hours, 'hour')])
     }
@@ -85,7 +97,8 @@ export const CreateSilenceModal = ({
         if (!selectedCenter) return message.error('请选择故障中心')
         if (!normalizedMatchers.length) return message.error('请至少保留一条静默匹配条件')
 
-        setLoading(true)
+        const request = ++revision.current
+        setLoading(true);setPreviewError('')
         try {
             const params = {
                 name: values.name.trim(),
@@ -96,14 +109,21 @@ export const CreateSilenceModal = ({
                 faultCenterId: selectedCenter,
                 status: 0,
             }
-            if (isUpdate) await updateSilence({ ...params, id: selectedRow.id })
-            else await createSilence(params)
-            await handleList?.()
-            message.success(isUpdate ? '静默规则已更新' : '静默规则已创建')
-            onClose()
+            const draft = isUpdate ? {...params,id:selectedRow.id} : params
+            if(!preview) {
+                const result=await previewSilence(draft)
+                if(request===revision.current) {setPreview({...result.data,draft}); requestAnimationFrame(()=>drawerRef.current?.scrollIntoView({block:'start',behavior:'smooth'}))}
+                return
+            }
+            const result = isUpdate ? await updateSilence({...preview.draft,previewHash:preview.previewHash,previewAt:preview.previewAt}) : await createSilence({...preview.draft,previewHash:preview.previewHash,previewAt:preview.previewAt})
+            setSaved(result.data)
+            try { await handleList?.() } catch { message.warning('静默已保存，但列表刷新失败，请返回后刷新') }
+            message.success({key:'silence-action',content:isUpdate ? '静默规则已更新' : '静默规则已创建'})
+            setPreview(null)
         } catch (error) {
+            setPreview(null);setPreviewError(error?.message || '预览或保存失败，请重试')
             console.error('Unable to save silence rule:', error)
-            message.error(error?.response?.data?.data || error?.message || '静默规则保存失败，请稍后重试')
+            message.error({key:'silence-action',content:error?.response?.data?.data || error?.message || '静默规则保存失败，请稍后重试'})
         } finally {
             setLoading(false)
         }
@@ -119,14 +139,16 @@ export const CreateSilenceModal = ({
         <Drawer
             title={<div className="wa-form-drawer-title"><span>{isUpdate ? '编辑静默规则' : '创建静默规则'}</span><small>{isUpdate ? '调整规则生效范围与时间' : '告警仍会保留，静默只会抑制通知投递'}</small></div>}
             open={visible}
-            onClose={onClose}
+            onClose={loading ? undefined : onClose}
             className="wa-form-drawer wa-silence-drawer"
             width={680}
             zIndex={1200}
             destroyOnClose
-            footer={<div className="wa-form-drawer-footer"><Button onClick={onClose}>取消</Button><Button type="primary" loading={loading} onClick={() => form.submit()}>{isUpdate ? '保存修改' : '创建静默'}</Button></div>}
+            footer={<div className="wa-form-drawer-footer"><Button disabled={loading} onClick={onClose}>{saved ? '完成并返回' : hasContext ? '返回告警' : '取消'}</Button>{!saved && <Button type="primary" loading={loading} onClick={() => form.submit()}>{preview ? '确认执行静默' : '预览影响范围'}</Button>}</div>}
         >
-            <Form form={form} name="silence_form" layout="vertical" onFinish={handleFormSubmit} preserve={false} className="wa-form">
+            <Form disabled={loading || Boolean(saved)} onValuesChange={invalidatePreview} form={form} name="silence_form" layout="vertical" onFinish={handleFormSubmit} preserve={false} className="wa-form">
+                <div ref={savedRef} />
+                {saved && <Alert showIcon type="success" message="静默规则已保存" description={`规则 ID：${saved.id || selectedRow?.id || '已保存'}。生效时间内，新出现的匹配告警也会被静默。可在通知与路由 → 静默规则中查看或删除规则以提前结束静默。`} />}
                 {hasContext && !isUpdate && <section className="wa-silence-context"><div><span>来自当前告警</span><strong>{silenceContext.alertName}</strong><p>{[silenceContext.scope?.environment, silenceContext.scope?.service, silenceContext.scope?.cluster, silenceContext.scope?.namespace].filter(Boolean).join(' · ') || '事件未提供可识别的范围标签'}</p></div><Tag>已预填范围</Tag></section>}
 
                 <section className="wa-form-section">
@@ -148,11 +170,15 @@ export const CreateSilenceModal = ({
 
                 <section className="wa-form-section">
                     <div className="wa-form-section-heading"><span>静默范围</span><small>仅使用当前告警真实携带的 Label 预填条件，不会猜测资源标签。</small></div>
-                    {hasContext && !isUpdate && <div className="wa-scope-choice" role="radiogroup"><button type="button" className={scopeMode === 'service' ? 'is-active' : ''} onClick={() => applyScope('service')}><strong>当前环境与服务</strong><small>适合发布、维护等服务级操作</small></button><button type="button" disabled={!onlyActualResourceAvailable} className={scopeMode === 'resource' ? 'is-active' : ''} onClick={() => applyScope('resource')}><strong>仅当前资源</strong><small>{onlyActualResourceAvailable ? '额外锁定当前告警实际携带的资源标签' : '当前告警未提供可用的资源标签'}</small></button><button type="button" className={scopeMode === 'all' ? 'is-active' : ''} onClick={() => applyScope('all')}><strong>完整事件标签</strong><small>尽量只匹配同一类告警事件</small></button><button type="button" className={scopeMode === 'custom' ? 'is-active' : ''} onClick={() => { setScopeMode('custom'); form.setFieldsValue({ labels: [emptyMatcher()] }) }}><strong>自定义条件</strong><small>手动定义精确匹配范围</small></button></div>}
-                    <Form.List name="labels">{(fields, { add, remove }) => <div className="wa-matcher-list">{fields.map(({ key, name, ...restField }) => <div className="wa-matcher-row" key={key}><Form.Item {...restField} name={[name, 'key']} rules={[{ required: true, whitespace: true, message: '请输入 Label 名称' }]}><Input placeholder="Label" /></Form.Item><Form.Item {...restField} name={[name, 'operator']} rules={[{ required: true, message: '请选择操作符' }]} initialValue="=="><Select options={[{ value: '==', label: '=' }, { value: '=~', label: '=~' }, { value: '!=', label: '!=' }, { value: '!~', label: '!~' }]} /></Form.Item><Form.Item {...restField} name={[name, 'value']} rules={[{ required: true, whitespace: true, message: '请输入匹配值' }]}><Input placeholder="匹配值" /></Form.Item><Button aria-label="删除匹配条件" type="text" icon={<DeleteOutlined />} disabled={fields.length === 1} onClick={() => remove(name)} /></div>)}<Button className="wa-add-matcher" type="dashed" icon={<PlusOutlined />} onClick={() => { setScopeMode('custom'); add(emptyMatcher()) }}>添加匹配条件</Button></div>}</Form.List>
+                    {hasContext && !isUpdate && <div className="wa-scope-choice" role="radiogroup"><button type="button" disabled={loading || Boolean(saved)} className={scopeMode === 'service' ? 'is-active' : ''} onClick={() => applyScope('service')}><strong>当前环境与服务</strong><small>适合发布、维护等服务级操作</small></button><button type="button" disabled={loading || Boolean(saved) || !onlyActualResourceAvailable} className={scopeMode === 'resource' ? 'is-active' : ''} onClick={() => applyScope('resource')}><strong>仅当前资源</strong><small>{onlyActualResourceAvailable ? '额外锁定当前告警实际携带的资源标签' : '当前告警未提供可用的资源标签'}</small></button><button type="button" disabled={loading || Boolean(saved)} className={scopeMode === 'all' ? 'is-active' : ''} onClick={() => applyScope('all')}><strong>完整事件标签</strong><small>尽量只匹配同一类告警事件</small></button><button type="button" disabled={loading || Boolean(saved)} className={scopeMode === 'custom' ? 'is-active' : ''} onClick={() => { invalidatePreview(); setScopeMode('custom'); form.setFieldsValue({ labels: [emptyMatcher()] }) }}><strong>自定义条件</strong><small>手动定义精确匹配范围</small></button></div>}
+                    <Form.List name="labels">{(fields, { add, remove }) => <div className="wa-matcher-list">{fields.map(({ key, name, ...restField }) => <div className="wa-matcher-row" key={key}><Form.Item {...restField} name={[name, 'key']} rules={[{ required: true, whitespace: true, message: '请输入 Label 名称' }]}><Input placeholder="Label" /></Form.Item><Form.Item {...restField} name={[name, 'operator']} rules={[{ required: true, message: '请选择操作符' }]} initialValue="=="><Select options={[{ value: '==', label: '=' }, { value: '=~', label: '=~' }, { value: '!=', label: '!=' }, { value: '!~', label: '!~' }]} /></Form.Item><Form.Item {...restField} name={[name, 'value']} rules={[{ required: true, whitespace: true, message: '请输入匹配值' }]}><Input placeholder="匹配值" /></Form.Item><Button aria-label="删除匹配条件" type="text" icon={<DeleteOutlined />} disabled={loading || Boolean(saved) || fields.length === 1} onClick={() => remove(name)} /></div>)}<Button className="wa-add-matcher" type="dashed" icon={<PlusOutlined />} onClick={() => { setScopeMode('custom'); add(emptyMatcher()) }}>添加匹配条件</Button></div>}</Form.List>
                     <div className="wa-silence-summary"><span>将静默</span><strong>{summary || '请补充匹配条件'}</strong><small>{rangeText}</small></div>
                 </section>
 
+                {hasContext && !onlyActualResourceAvailable && !isUpdate && <Alert type="warning" showIcon message="当前告警缺少可精确限定资源的 Label，请核对服务级范围，勿直接视为单实例静默。" />}
+                {previewError && <Alert type="error" showIcon message={previewError} />}
+                <div ref={drawerRef} />
+                {preview && <section className="wa-silence-impact" aria-label="静默影响预览"><h3>确认影响范围</h3><p>当前匹配 <strong>{preview.total}</strong> 条告警 · {new Date(preview.previewAt*1000).toLocaleTimeString()}</p><p>故障中心：{effectiveCenterName || preview.draft.faultCenterId}</p><p>{summary}</p><p>{rangeText} · 原因：{preview.draft.comment}</p><ul>{preview.samples?.map(item=><li key={item.fingerprint}>{item.ruleName} · {item.scope?.environment || '环境未标记'} / {item.scope?.service || '服务未标记'} · {item.scope?.resource || item.fingerprint}</li>)}</ul>{preview.truncated && <small>仅展示前 5 个样例，数量为完整匹配结果。</small>}<Alert type="warning" showIcon message="这是当前快照，不是未来影响上限" description="生效期间新出现的匹配告警也会被静默。确认时会重新校验；条件、配置或匹配集合变化需重新预览。" /><Button disabled={loading} onClick={invalidatePreview}>返回修改</Button></section>}
                 <Alert className="wa-silence-note" showIcon type="info" message="静默不会关闭或恢复告警" description="告警状态仍会正常更新；静默只用于暂时抑制符合条件事件的通知投递。" />
             </Form>
         </Drawer>
