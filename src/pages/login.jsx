@@ -118,7 +118,6 @@ export const Login = () => {
             const oidcConfig = {
                 authority: res?.data?.upperURI,
                 client_id: res?.data?.clientID,
-                client_secret: res?.data?.clientSecret,
                 redirect_uri: res?.data?.redirectURI,
                 response_type: 'code',
                 scope: 'openid profile email',

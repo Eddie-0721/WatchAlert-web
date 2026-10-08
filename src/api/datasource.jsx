@@ -36,7 +36,7 @@ async function createDatasource(params) {
         return res;
     } catch (error) {
         HandleApiError(error)
-        return error
+        throw error
     }
 }
 
@@ -50,7 +50,7 @@ async function updateDatasource(params) {
         return res;
     } catch (error) {
         HandleApiError(error)
-        return error
+        throw error
     }
 }
 
@@ -78,7 +78,7 @@ async function DatasourcePing(params) {
         return res;
     } catch (error) {
         HandleApiError(error)
-        return error
+        throw error
     }
 }
 

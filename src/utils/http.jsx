@@ -165,7 +165,7 @@ export default function (method, url, param) {
                         resolve(response);
                     })
                     .catch(function (error) {
-                        console.error('get request POST failed.', error);
+                        // Axios errors contain the original request, including credentials.
                         reject(error);
                     });
                 break;

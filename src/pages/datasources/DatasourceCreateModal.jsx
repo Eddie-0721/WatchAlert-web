@@ -9,6 +9,7 @@ import {
     ApartmentOutlined, 
 } from "@ant-design/icons"
 import VSCodeEditor from "../../utils/VSCodeEditor";
+import CredentialEditor, { CredentialContext, useCredentialRules } from "../../components/CredentialEditor";
 const { TextArea } = Input
 const { Title, Text } = Typography
 const MyFormItemContext = React.createContext([])
@@ -26,7 +27,8 @@ const MyFormItemGroup = ({ prefix, children }) => {
 const MyFormItem = ({ name, ...props }) => {
     const prefixPath = React.useContext(MyFormItemContext)
     const concatName = name !== undefined ? [...prefixPath, ...toArr(name)] : undefined
-    return <Form.Item name={concatName} {...props} />
+    const rules = useCredentialRules(concatName || [], props.rules)
+    return <Form.Item name={concatName} {...props} rules={rules} />
 }
 
 // 数据源类型配置
@@ -112,6 +114,14 @@ export const CreateDatasourceModal = ({ visible, onClose, selectedRow, type, han
     }
 
     useEffect(() => {
+        if (!visible) return
+        form.resetFields()
+        setEnabled(true)
+        setAuthState("Off")
+        setWriteState("Off")
+        setCurrentStep(0)
+        setDisableStep(false)
+        setSelectedType(null)
         if (selectedRow) {
             const labelsArray = Object.entries(selectedRow.labels || {}).map(([key, value]) => ({
                 key,
@@ -126,7 +136,10 @@ export const CreateDatasourceModal = ({ visible, onClose, selectedRow, type, han
                 })) : [];
 
             setSelectedType(selectedRow.type)
-            setWriteState(selectedRow.write.enabled)
+            setWriteState(selectedRow.write?.enabled || "Off")
+            setEnabled(selectedRow.enabled !== false)
+            const auth = selectedRow.Auth || selectedRow.auth || {}
+            setAuthState(auth.user || selectedRow.credentialsSet?.['auth.pass'] ? "On" : "Off")
             form.setFieldsValue({
                 name: selectedRow.name,
                 type: selectedRow.type,
@@ -137,12 +150,11 @@ export const CreateDatasourceModal = ({ visible, onClose, selectedRow, type, han
                     headers: headersArray  // 添加headers字段
                 },
                 write: {
-                    enabled: selectedRow.enabled,
-                    url: selectedRow.write.url,
+                    enabled: selectedRow.write?.enabled || "Off",
+                    url: selectedRow.write?.url,
                 },
-                alicloudEndpoint: selectedRow.alicloudEndpoint,
-                alicloudAk: selectedRow.alicloudAk,
-                alicloudSk: selectedRow.alicloudSk,
+                auth,
+                dsAliCloudConfig: selectedRow.dsAliCloudConfig,
                 awsCloudwatch: selectedRow.awsCloudwatch,
                 description: selectedRow.description,
                 kubeConfig: selectedRow.kubeConfig,
@@ -158,28 +170,16 @@ export const CreateDatasourceModal = ({ visible, onClose, selectedRow, type, han
             setCurrentStep(1)
             setDisableStep(true)
         }
-    }, [selectedRow, form])
+    }, [visible, selectedRow, form])
 
     const handleCreate = async (params) => {
-        try {
-            await createDatasource(params)
-            handleList()
-        } catch (error) {
-            console.error(error)
-        } finally {
-            setSubmitLoading(false)
-        }
+        await createDatasource(params)
+        handleList()
     }
 
     const handleUpdate = async (params) => {
-        try {
-            await updateDatasource(params)
-            handleList()
-        } catch (error) {
-            console.error(error)
-        } finally {
-            setSubmitLoading(false)
-        }
+        await updateDatasource(params)
+        handleList()
     }
 
     const handleFormSubmit = async (values) => {
@@ -200,6 +200,8 @@ export const CreateDatasourceModal = ({ visible, onClose, selectedRow, type, han
 
         const params = {
             ...values,
+            auth: authState === "On" ? values.auth : { user: "", pass: "" },
+            clearCredentials: [...new Set([...(values.clearCredentials || []), ...(authState === "Off" ? ["auth.pass"] : [])])],
             labels: formattedLabels,
             clickhouseConfig: {
                 addr: values?.clickhouseConfig?.addr,
@@ -237,10 +239,14 @@ export const CreateDatasourceModal = ({ visible, onClose, selectedRow, type, han
 
     const handleSubmit = async () => {
         setSubmitLoading(true)
-        const values = form.getFieldsValue()
-        await form.validateFields()
-        await handleFormSubmit(values)
-        setSubmitLoading(false)
+        try {
+            await form.validateFields()
+            await handleFormSubmit(form.getFieldsValue(true))
+        } catch {
+            // Field validation or API wrapper supplies feedback. Keep the input.
+        } finally {
+            setSubmitLoading(false)
+        }
     }
 
     const handleTestConnection = async () => {
@@ -269,6 +275,9 @@ export const CreateDatasourceModal = ({ visible, onClose, selectedRow, type, han
         try {
             const params = {
                 ...values,
+                id: type === "update" ? selectedRow.id : undefined,
+                auth: authState === "On" ? values.auth : { user: "", pass: "" },
+                clearCredentials: [...new Set([...(values.clearCredentials || []), ...(authState === "Off" ? ["auth.pass"] : [])])],
                 labels: formattedLabels,
                 clickhouseConfig: {
                     addr: values?.clickhouseConfig?.addr,
@@ -281,8 +290,8 @@ export const CreateDatasourceModal = ({ visible, onClose, selectedRow, type, han
                 },
             }
             await DatasourcePing(params)
-        } catch (error) {
-            console.error("连接测试失败:", error)
+        } catch {
+            // Feedback is handled by the API wrapper without logging credentials.
         }
         setTestLoading(false)
     }
@@ -365,7 +374,9 @@ export const CreateDatasourceModal = ({ visible, onClose, selectedRow, type, han
     // 渲染数据源配置表单
     const renderDatasourceConfigForm = () => {
         return (
+            <CredentialContext.Provider value={selectedRow?.credentialsSet || {}}>
             <Form form={form} name="form_item_path" layout="vertical">
+                <CredentialEditor configured={selectedRow?.credentialsSet} />
                 <MyFormItem name="name" label="数据源名称" rules={[{ required: true }]}>
                     <Input
                         value={spaceValue}
@@ -538,7 +549,7 @@ export const CreateDatasourceModal = ({ visible, onClose, selectedRow, type, han
                                                             {...restField}
                                                             name={[name, "value"]}
                                                             style={{ flex: 1, width: "300px" }}
-                                                            rules={[{ required: true, message: "请输入请求头值" }]}
+                                                            rules={[{ required: !(selectedRow?.http?.headers && Object.keys(selectedRow.http.headers).some(key => key.toLowerCase() === (form.getFieldValue(["http", "headers", name, "key"]) || "").toLowerCase())), message: "请输入请求头值" }]}
                                                         >
                                                             <Input placeholder="值 (例如: application/json)" />
                                                         </Form.Item>
@@ -766,6 +777,7 @@ export const CreateDatasourceModal = ({ visible, onClose, selectedRow, type, han
                     />
                 </div>
             </Form>
+            </CredentialContext.Provider>
         )
     }
 
@@ -824,7 +836,7 @@ export const CreateDatasourceModal = ({ visible, onClose, selectedRow, type, han
 
     return (
         <Drawer
-            title={<div className="wa-form-drawer-title"><span>创建数据源</span><small>选择数据源类型后，补全连接信息与采集范围。</small></div>}
+            title={<div className="wa-form-drawer-title"><span>{type === "update" ? "编辑数据源" : "创建数据源"}</span><small>选择数据源类型后，补全连接信息与采集范围。</small></div>}
             open={visible}
             onClose={onClose}
             className="wa-form-drawer"

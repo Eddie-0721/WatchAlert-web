@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useContext, useMemo } from 'react';
-import {Anchor, Button, Form, Input, Popconfirm, Typography, Radio, Segmented, Tabs, Switch, Select, message} from 'antd';
+import {Alert, Anchor, Button, Form, Input, Popconfirm, Typography, Radio, Segmented, Tabs, Switch, Select, message} from 'antd';
+import CredentialEditor, { CredentialContext, useCredentialRules } from "../../components/CredentialEditor";
 import "./index.css";
 import ConnectionDiagnostics from "../copilot/ConnectionDiagnostics";
 import "../copilot/index.css";
@@ -22,7 +23,8 @@ const MyFormItemGroup = ({ prefix, children }) => {
 const MyFormItem = ({ name, ...props }) => {
     const prefixPath = useContext(MyFormItemContext);
     const concatName = name !== undefined ? [...prefixPath, ...toArr(name)] : undefined;
-    return <Form.Item name={concatName} {...props} />;
+    const rules = useCredentialRules(concatName || [], props.rules);
+    return <Form.Item name={concatName} {...props} rules={rules} />;
 };
 
 //  优化的Cron表达式验证函数 - 更灵活和准确的验证逻辑
@@ -108,6 +110,8 @@ export const SystemSettings = () => {
     const [roleList, setRoleList] = useState([]);
     const [tenantList, setTenantList] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [loadError, setLoadError] = useState(false);
+    const [credentialsSet, setCredentialsSet] = useState({});
 
     useEffect(() => {
         loadSettings();
@@ -120,6 +124,9 @@ export const SystemSettings = () => {
         setLoading(true);
         try {
             const res = await getSystemSetting();
+            if (res?.code !== 200 || !res.data) throw new Error('Invalid settings response');
+            setCredentialsSet(res.data.credentialsSet || {});
+            setLoadError(false);
 
             //  改进的默认提示词设置
             const defaultPrompt = "请分析以下警报内容，下面的信息很可能包括（指标、日志、跟踪或 Kubernetes 事件）。\n" +
@@ -223,6 +230,7 @@ export const SystemSettings = () => {
             };
 
             const oidcConfig = {
+                clientSecret: "",
                 clientID: res?.data?.oidcConfig?.clientID || "",
                 upperURI: res?.data?.oidcConfig?.upperURI || "",
                 redirectURI: res?.data?.oidcConfig?.redirectURI || "",
@@ -230,6 +238,7 @@ export const SystemSettings = () => {
             }
 
             //  确保表单字段正确初始化
+            form.resetFields();
             form.setFieldsValue({
                 communicationConfig,
                 aiConfig,
@@ -251,7 +260,7 @@ export const SystemSettings = () => {
             setAgentApiKeySet(Boolean(res?.data?.agentConfig?.model?.apiKeySet));
             setVersion(res?.data?.appVersion || 'Unknown');
         } catch (error) {
-            console.error("Failed to load settings:", error);
+            setLoadError(true);
             message.error('加载设置失败，请重试');
         } finally {
             setLoading(false);
@@ -260,6 +269,8 @@ export const SystemSettings = () => {
 
     //  优化的保存函数 - 改进数据验证和错误处理
     const saveSettings = async (values) => {
+        if (loadError || loading) return;
+        values = form.getFieldsValue(true);
         setLoading(true);
         try {
             await form.validateFields();
@@ -322,12 +333,9 @@ export const SystemSettings = () => {
                 }
             };
 
-            console.log("[v0] Saving cronjob:", processedValues.ldapConfig?.cronjob); //  调试日志
-
             await saveSystemSetting(processedValues);
-            loadSettings();
+            await loadSettings();
         } catch (error) {
-            console.error("Failed to save settings:", error);
             message.error('保存设置失败，请检查输入并重试');
         } finally {
             setLoading(false);
@@ -408,7 +416,11 @@ export const SystemSettings = () => {
             <Breadcrumb items={['系统设置']} />
             <div style={{ display: 'flex', width: '100%' }}>
                 <div style={{ width: '90%', alignItems: 'flex-start', textAlign: 'start', height: '90%', overflowY: 'auto' }}>
-                    <Form form={form} name="form_item_path" layout="vertical" onFinish={handleSave}>
+                    {loadError && <Alert type="error" showIcon message="设置读取失败，已禁止保存，避免覆盖现有配置"
+                        action={<Button onClick={loadSettings} loading={loading}>重新加载</Button>} />}
+                    <CredentialContext.Provider value={credentialsSet}>
+                    <Form form={form} name="form_item_path" layout="vertical" onFinish={handleSave} disabled={loadError || loading}>
+                        <CredentialEditor configured={credentialsSet} />
                         <section id="communication">
                             <Typography.Title level={5}>通信配置</Typography.Title>
                             <p style={helpTextStyle}>用于推送告警消息，支持邮件、电话、短信等多种方式；</p>
@@ -946,6 +958,7 @@ export const SystemSettings = () => {
                             </Button>
                         </section>
                     </Form>
+                    </CredentialContext.Provider>
                 </div>
 
                 <div className="systemSettingsAnchorContainer">

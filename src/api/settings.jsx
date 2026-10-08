@@ -8,7 +8,7 @@ async function getSystemSetting() {
         return res;
     } catch (error) {
         HandleApiError(error)
-        return error
+        throw error
     }
 }
 
@@ -17,12 +17,12 @@ async function saveSystemSetting(params) {
         const res = await http('post', '/api/w8t/setting/saveSystemSetting', params);
         message.open({
             type: 'success',
-            content: '系统配置保存成功, 且立即生效!',
+            content: '系统配置已保存',
         });
         return res;
     } catch (error) {
         HandleApiError(error)
-        return error
+        throw error
     }
 }
 
