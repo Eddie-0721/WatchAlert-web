@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   Typography, 
@@ -13,6 +13,8 @@ import {
   Pagination,
   Empty,
   Tooltip,
+  Alert,
+  message,
   Input
 } from 'antd';  // 添加 Empty 组件
 import { CreateSilenceModal } from './SilenceRuleCreateModal';
@@ -47,6 +49,8 @@ export const Silences = (props) => {
     const [list, setList] = useState([]); // 初始化list为空数组
     const [selectedCard, setSelectedCard] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [listError, setListError] = useState('');
+    const [deletingId, setDeletingId] = useState(null);
     const [selectedAggregationType, setSelectedAggregationType] = useState(aggregationType)
     const [pagination, setPagination] = useState({
         index: 1,
@@ -54,6 +58,8 @@ export const Silences = (props) => {
         total: 0,
     });
     const [searchText, setSearchText] = useState(''); // 添加搜索文本状态
+    const [searchInput, setSearchInput] = useState('');
+    const listRequest = useRef(0);
     const [height, setHeight] = useState(window.innerHeight)
     const [selectStatus, setSelectStatus] = useState("1")
 
@@ -87,36 +93,33 @@ export const Silences = (props) => {
 
     useEffect(() => {
         handleList();
-    }, [pagination.index, pagination.size, effectiveFaultCenterId]);  // 添加分页依赖
+        return () => { listRequest.current += 1; };
+    }, [pagination.index, pagination.size, effectiveFaultCenterId, searchText, selectStatus]);
 
     // 获取所有数据
-    const handleList = async (status) => {
+    const handleList = async () => {
+        const requestId = ++listRequest.current;
+        setLoading(true);
+        setListError('');
         try {
             const params = {
                 index: pagination.index,
                 size: pagination.size,
                 faultCenterId: effectiveFaultCenterId,
                 query: searchText || undefined, // 添加搜索参数
-                status: status || "1"
+                status: selectStatus
             };
 
-            setLoading(true);
             const res = await getSilenceList(params);
-            setLoading(false);
-
-            const sortedList = res?.data?.list?.sort((a, b) => {
-                return new Date(b.update_at) - new Date(a.update_at);
-            });
-
-            setPagination({
-                index: res?.data?.index,
-                size: res?.data?.size,
-                total: res?.data?.total,
-            });
-
-            setList(sortedList);
+            if (requestId !== listRequest.current) return;
+            if (res?.code !== 200 || !res?.data || (res.data.list != null && !Array.isArray(res.data.list))) throw new Error('静默列表读取失败');
+            setPagination(previous => ({...previous, total: res.data.total || 0}));
+            setList(res.data.list || []);
         } catch (error) {
-            console.error(error);
+            if (requestId !== listRequest.current) return;
+            setListError(typeof error?.response?.data?.data === 'string' ? error.response.data.data : '静默列表读取失败，请重试');
+        } finally {
+            if (requestId === listRequest.current) setLoading(false);
         }
     };
 
@@ -130,16 +133,21 @@ export const Silences = (props) => {
     };
 
     const handleDelete = async (record) => {
+        if (deletingId) return;
+        setDeletingId(record.id);
         try {
             const params = {
-                faultCenterId: effectiveFaultCenterId,
+                faultCenterId: record.faultCenterId,
                 id: record.id,
                 name: record.name,
             };
             await deleteSilence(params);
-            handleList(); // 重新加载当前页数据
+            message.success('静默规则已删除');
+            await handleList();
         } catch (error) {
-            console.error(error);
+            message.error(typeof error?.response?.data?.data === 'string' ? error.response.data.data : error?.message || '删除失败，请核对静默实际状态后重试');
+        } finally {
+            setDeletingId(null);
         }
     };
 
@@ -335,13 +343,14 @@ export const Silences = (props) => {
                     <Space size="middle">
                         <Tooltip title="删除">
                             <Popconfirm
-                                title="确定要删除吗?"
+                                title="确定删除这条静默规则？"
+                                description={`${record.name}：删除后，匹配告警将不再被此规则静默。`}
                                 onConfirm={() => handleDelete(record)}
                                 okText="确定"
                                 cancelText="取消"
                                 placement="left"
                             >
-                                <Button type="text" icon={<DeleteOutlined />} style={{ color: "#ff4d4f" }} />
+                                <Button type="text" aria-label={`删除静默 ${record.name}`} loading={deletingId === record.id} disabled={Boolean(deletingId)} icon={<DeleteOutlined />} style={{ color: "#ff4d4f" }} />
                             </Popconfirm>
                         </Tooltip>
                     </Space>
@@ -357,16 +366,16 @@ export const Silences = (props) => {
             ...pagination,
             index: 1
         });
-        handleList();
     };
 
     const changeStatus = async ({ target: { value } }) => {
         setSelectStatus(value)
-        handleList(value)
+        setPagination(previous => ({...previous, index: 1}))
     }
 
     return (
         <div style={{ marginTop: "5px" }}>
+            {listError && <Alert type="error" showIcon message={listError} action={<Button onClick={handleList}>重试</Button>} />}
             <Title level={4} style={{ margin: 0, fontSize: "16px" }}>
                 <BlockOutlined style={{ marginRight: "12px" }} />
                 告警聚合
@@ -404,8 +413,8 @@ export const Silences = (props) => {
                     />
                     <Search
                         placeholder="搜索规则名称"
-                        value={searchText}
-                        onChange={(e) => setSearchText(e.target.value)}
+                        value={searchInput}
+                        onChange={(e) => setSearchInput(e.target.value)}
                         onSearch={handleSearch}
                         style={{ 
                             marginLeft: '10px',

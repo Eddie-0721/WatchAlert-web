@@ -1,5 +1,4 @@
 import http from '../utils/http';
-import { message } from 'antd';
 import {HandleApiError} from "../utils/lib";
 
 async function getSilenceList(params) {
@@ -8,7 +7,7 @@ async function getSilenceList(params) {
         return res;
     } catch (error) {
         HandleApiError(error)
-        return error
+        throw error
     }
 }
 
@@ -19,17 +18,7 @@ async function createSilence(params) { return checked(await http('post','/api/w8
 async function updateSilence(params) { return checked(await http('post','/api/w8t/silence/silenceUpdate',params)); }
 
 async function deleteSilence(params) {
-    try {
-        const res = await http('post', `/api/w8t/silence/silenceDelete`, params);
-        message.open({
-            type: 'success',
-            content: '静默规则删除成功',
-        });
-        return res;
-    } catch (error) {
-        HandleApiError(error)
-        return error
-    }
+    return checked(await http('post', '/api/w8t/silence/silenceDelete', params));
 }
 
 export {

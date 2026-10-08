@@ -26,6 +26,62 @@ async function mockAPI(page, capabilitiesError = false) {
   });
 }
 
+test('silence deletion reports failure, uses the row center and keeps the current filter', async ({page}) => {
+  await mockAPI(page);
+  let removed = false; let rejectDelete = true; let deletion; const statuses=[];
+  await page.route('**/silence/silenceList*', route => {
+    const url=new URL(route.request().url()); statuses.push(url.searchParams.get('status'));
+    return route.fulfill({json:{code:200,data:{index:1,size:10,total:removed?0:1,list:removed?null:[{id:'s1',name:'生产维护',faultCenterId:'row-center',labels:[],status:2,startsAt:1788700000,endsAt:1788800000,updateAt:1788700000}]}}});
+  });
+  await page.route('**/silence/silenceDelete', route => {
+    deletion=route.request().postDataJSON();
+    if(rejectDelete) return route.fulfill({json:{code:400,data:'静默缓存删除失败，配置未删除，请稍后重试',msg:'failed'}});
+    removed=true;return route.fulfill({json:{code:200,data:null,msg:'success'}});
+  });
+  await page.goto('/silenceRules');
+  await page.getByText('已失效',{exact:true}).click();
+  await expect.poll(()=>statuses.at(-1)).toBe('2');
+  await page.getByRole('button',{name:'删除静默 生产维护'}).click();
+  await page.getByRole('button',{name:/^确\s*定$/}).click();
+  await expect(page.getByText('静默缓存删除失败，配置未删除，请稍后重试',{exact:true})).toBeVisible();
+  await expect(page.getByText('静默规则已删除',{exact:true})).toHaveCount(0);
+  await expect(page.getByRole('button',{name:'删除静默 生产维护'})).toBeVisible();
+  expect(deletion.faultCenterId).toBe('row-center');
+  rejectDelete=false;
+  await page.getByRole('button',{name:'删除静默 生产维护'}).click();
+  await page.getByRole('button',{name:/^确\s*定$/}).click();
+  await expect(page.getByText('静默规则已删除',{exact:true})).toBeVisible();
+  await expect(page.getByText('暂无静默规则',{exact:true})).toBeVisible();
+  expect(statuses.at(-1)).toBe('2');
+});
+
+test('silence loading failure has a retry and search waits for submission', async ({page}) => {
+  await mockAPI(page);let fail=true;const queries=[];
+  await page.route('**/silence/silenceList*',route=>{
+    queries.push(new URL(route.request().url()).searchParams.get('query'));
+    return route.fulfill({status:fail?500:200,json:fail?{code:500,msg:'failed'}:{code:200,data:{index:1,size:10,total:0,list:null}}});
+  });
+  await page.goto('/silenceRules');
+  await expect(page.getByRole('button',{name:/^重\s*试$/})).toBeVisible();
+  fail=false;await page.getByRole('button',{name:/^重\s*试$/}).click();
+  await expect(page.getByRole('button',{name:/^重\s*试$/})).toHaveCount(0);
+  const count=queries.length;
+  await page.getByPlaceholder('搜索规则名称').fill('payment');
+  expect(queries.length).toBe(count);
+  await page.getByPlaceholder('搜索规则名称').press('Enter');
+  await expect.poll(()=>queries.at(-1)).toBe('payment');
+});
+
+test('failed acknowledgement never shows a successful claim', async ({page}) => {
+  await mockAPI(page);
+  await page.route('**/event/process', route=>route.fulfill({status:400,json:{code:400,data:'认领未全部确认：0 条已认领，1 条未确认；请刷新核对实际状态',msg:'failed'}}));
+  await page.goto('/alerts');await page.locator('.alert-event-row').first().click();
+  await page.getByRole('button',{name:'认领告警',exact:true}).click();
+  await expect(page.getByText(/认领未全部确认：0 条已认领/)).toBeVisible();
+  await expect(page.getByText('告警已认领',{exact:true})).toHaveCount(0);
+  await expect(page.getByRole('button',{name:'认领告警',exact:true})).toBeEnabled();
+});
+
 test('125 alerts paginate, preserve position while scrolling, and expose actions', async ({page}) => {
   await mockAPI(page); const errors=[];page.on('pageerror',e=>{errors.push(e.message);console.error(e.stack);});
   await page.goto('/alerts');

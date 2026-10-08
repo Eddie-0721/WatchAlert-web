@@ -150,12 +150,15 @@ export const AlertStream = () => {
         try {
             setClaiming(true);
             const response = await ProcessAlertEvent({ state: 1, faultCenterId: selected.faultCenterId || activeCenterId, fingerprints: [selected.fingerprint] });
-            if (response?.code !== 200) throw new Error('认领失败');
+            if (response?.code !== 200) throw new Error(typeof response?.data === 'string' ? response.data : '认领结果未确认，请刷新核对');
             message.success('告警已认领');
             setSelected(current => ({ ...current, acknowledged: true, status: 'processing', confirmState: { ...(current.confirmState || {}), isOk: true } }));
-            setEvents(current => current.map(event => event.fingerprint === selected.fingerprint ? { ...event, acknowledged: true, status: 'processing', confirmState: { ...(event.confirmState || {}), isOk: true } } : event));
+            setEvents(current => current.map(event => event.fingerprint === selected.fingerprint && event.faultCenterId === selected.faultCenterId ? { ...event, acknowledged: true, status: 'processing', confirmState: { ...(event.confirmState || {}), isOk: true } } : event));
             loadEvents();
-        } catch (error) { message.error('认领告警失败'); } finally { setClaiming(false); }
+        } catch (error) {
+            message.error(typeof error?.response?.data?.data === 'string' ? error.response.data.data : error?.message || '认领结果未确认，请刷新核对');
+            loadEvents();
+        } finally { setClaiming(false); }
     };
 
     const openSilence = () => {
