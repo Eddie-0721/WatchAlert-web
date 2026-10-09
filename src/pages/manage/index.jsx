@@ -90,7 +90,7 @@ export const Manage = () => {
         <span className="manage-rule-routing"><small>{rule.datasourceType}</small><small>{Array.isArray(rule.datasourceId) ? rule.datasourceId.length : 0} 个数据源</small></span>
         <span className="manage-rule-state"><Tag color={rule.enabled ? 'success' : 'default'}>{rule.enabled ? '已启用' : '已停用'}</Tag></span><ArrowUpRight size={15} />
       </button>) : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="没有符合条件的规则" />}</div>}
-      <div className="wa-pagination"><Pagination current={page} pageSize={size} total={total} disabled={loading || Boolean(error)} showSizeChanger showTotal={value => `共 ${value} 条`} onChange={(next, nextSize) => { setPage(size === nextSize ? next : 1); setSize(nextSize); }} /></div>
+      <div className="wa-pagination"><Pagination current={page} pageSize={size} total={total} disabled={loading || Boolean(error)} responsive showLessItems showSizeChanger showTotal={value => `共 ${value} 条`} onChange={(next, nextSize) => { setPage(size === nextSize ? next : 1); setSize(nextSize); }} /></div>
     </>}
     {tab === 'routes' && <>
       <nav className="wa-page-links" aria-label="通知维护入口"><Button onClick={() => navigate('/silenceRules')}>静默规则</Button><Button onClick={() => navigate('/noticeTemplate')}>通知模板</Button><Button onClick={() => navigate('/noticeRecords')}>投递记录</Button><Button onClick={() => navigate('/faultCenter')}>路由与升级配置</Button></nav>

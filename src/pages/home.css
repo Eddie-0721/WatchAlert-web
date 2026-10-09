@@ -17,3 +17,13 @@
 .ops-section--alerts { margin-top: 42px; }.ops-alert-list { border-top: 1px solid #e4e4e7; }.ops-alert-row { width: 100%; display: grid; grid-template-columns: 12px minmax(0, 1fr) 22px; gap: 10px; align-items: center; padding: 14px 2px; border: 0; border-bottom: 1px solid #eeeeef; background: transparent; text-align: left; }.ops-alert-row:hover .ops-alert-row__main strong { text-decoration: underline; text-underline-offset: 3px; }.ops-alert-row__dot { width: 8px; height: 8px; border-radius: 50%; }.ops-alert-row__dot.critical { background: #dc2626; }.ops-alert-row__dot.warning { background: #d97706; }.ops-alert-row__dot.info { background: #2563eb; }.ops-alert-row__main { min-width: 0; }.ops-alert-row__main strong, .ops-alert-row__main small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }.ops-alert-row__main strong { color: #18181b; font-size: 12px; font-weight: 550; }.ops-alert-row__main small { margin-top: 3px; color: #71717a; font-size: 10px; }.ops-alert-row__go { color: #a1a1aa; }
 @media (max-width: 900px) { .ops-overview { padding: 36px 30px 70px; }.ops-overview__grid { grid-template-columns: 1fr; gap: 30px; }.ops-ai-brief { max-width: 520px; }.ops-stat-grid { grid-template-columns: repeat(2, 1fr); }.ops-health-line { align-items: flex-start; flex-direction: column; }.ops-center-picker { width: 100%; }.ops-center-picker .ant-select { flex: 1; } }
 @media (max-width: 600px) { .ops-overview { padding: 28px 18px 92px; }.ops-overview__header { display: block; }.ops-overview__actions { margin-top: 18px; }.ops-overview__actions .ant-btn { flex: 1; }.ops-stat-grid { gap: 20px; }.ops-chart-wrap { height: 260px; }.ops-section--alerts { margin-top: 32px; } }
+
+/* Operational labels should remain legible across the overview, including on phones. */
+.ops-eyebrow, .ops-center-picker, .ops-stat > span, .ops-stat small,
+.ops-section__head p, .ops-section__head > span, .ops-ai-finding span,
+.ops-alert-row__main small { font-size: 12px; }
+.ops-section__head h2 { font-size: 16px; font-weight: 600; }
+.ops-ai-brief__title strong, .ops-ai-finding strong, .ops-alert-row__main strong {
+  font-size: 14px;
+  font-weight: 600;
+}

@@ -24,36 +24,18 @@ export const DashboardFolder = () => {
             dataIndex: 'name',
             key: 'name',
             render: (text, record) => (
-                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <div className="wa-resource-name-cell">
                     <Link
                         to={`/folder/${record.id}/list`}
-                        style={{
-                            color: "#1677ff",
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "8px",
-                        }}
+                        className="wa-resource-name"
+                        title={text}
                     >
                         {text}
                     </Link>
                     <Tooltip title="点击复制 ID">
-                <span
-                    style={{
-                        color: '#8c8c8c',     // 灰色字体
-                        fontSize: '12px',
-                        cursor: 'pointer',
-                        userSelect: 'none',
-                        display: 'inline-block',
-                        maxWidth: '200px',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap'
-                    }}
-                    onClick={() => copyToClipboard(record.id)}
-                >
-                    {record.id}
-                    <CopyOutlined style={{ marginLeft: 8 }} />
-                </span>
+                        <Button type="link" className="wa-resource-id" aria-label={`复制仪表盘目录 ID ${text}`} title={record.id} onClick={() => copyToClipboard(record.id)}>
+                            <span>{record.id}</span><CopyOutlined />
+                        </Button>
                     </Tooltip>
                 </div>
             ),
@@ -112,6 +94,7 @@ export const DashboardFolder = () => {
                     >
                         <Button
                             type="text"
+                            aria-label={`更多操作：${record.name}`}
                             icon={<MoreOutlined />}
                             style={{ color: "#666" }}
                         />
@@ -199,12 +182,11 @@ export const DashboardFolder = () => {
     return (
         <>
             <Breadcrumb items={['仪表盘']} />
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <div>
+            <div className="wa-list-toolbar">
+                <div className="wa-list-toolbar__search">
                     <Search
                         allowClear
                         placeholder="输入搜索关键字"
-                        style={{ width: 300 }}
                         onSearch={onSearch}
                     />
                 </div>
@@ -212,9 +194,6 @@ export const DashboardFolder = () => {
                     <Button
                         type="primary"
                         onClick={() => { setCreateModalVisible(true) }}
-                        style={{
-                            backgroundColor: '#000000'
-                        }}
                         icon={<PlusOutlined />}
                     >
                         创建

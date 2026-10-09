@@ -4,10 +4,14 @@
 .manage-explanation { color: #71717a; font-size: 14px; margin: 24px 0; line-height: 1.6; }
 .app-page-body .manage-rule-filters { grid-template-columns: minmax(220px, 2fr) repeat(3, minmax(130px, 1fr)); }
 .app-page-body .source-row :is(small, p, footer), .app-page-body .source-row__head .ant-tag { font-size: 12px; }
+.app-page-body .manage-row__main strong, .app-page-body .source-row__head strong { font-size: 14px; font-weight: 600; }
 @media (max-width: 960px) { .app-page-body .manage-rule-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 600px) {
+@media (max-width: 760px) {
  .app-page-body .manage-rule-filters { grid-template-columns: minmax(0, 1fr); }
  .app-page-body .manage-rule-row { grid-template-columns: 28px minmax(0, 1fr) auto; }
  .app-page-body .manage-rule-state { display: block; }
  .app-page-body .manage-rule-row > svg { display: none; }
+ .app-page-body .manage-page .wa-pagination { justify-content: flex-start; }
+ .app-page-body .manage-page .ant-pagination { display: flex; flex-wrap: wrap; }
+ .app-page-body .manage-page .ant-pagination-total-text { flex-basis: 100%; margin-right: 0; text-align: left; }
 }

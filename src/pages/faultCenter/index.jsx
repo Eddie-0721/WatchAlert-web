@@ -195,7 +195,9 @@ export const FaultCenter = () => {
 
     // 格式化时间
     const formatDate = (timestamp) => {
+        if (!Number.isFinite(Number(timestamp)) || Number(timestamp) <= 0) return '创建时间未知'
         const date = new Date(timestamp * 1000) // 将秒转换为毫秒
+        if (Number.isNaN(date.getTime())) return '创建时间未知'
         const year = date.getFullYear() // 获取年份
         const month = date.getMonth() + 1 // 获取月份（0-11，需要加1）
         const day = date.getDate() // 获取日期
@@ -215,13 +217,13 @@ export const FaultCenter = () => {
             <div style={styles.pageContainer}>
                 {/* 固定在顶部的搜索和创建按钮 */}
                 <div style={styles.headerSection}>
-                    <div style={{ display: "flex", justifyContent: "space-between" }}>
-                        <div style={{ display: "flex", gap: "10px" }}>
-                            <Search allowClear placeholder="输入搜索关键字" onSearch={onSearch} style={{ width: 300 }} />
+                    <div className="wa-list-toolbar">
+                        <div className="wa-list-toolbar__search">
+                            <Search allowClear placeholder="输入搜索关键字" onSearch={onSearch} />
                         </div>
 
                         <div>
-                            <Button type="primary" style={{ backgroundColor: "#000000" }} onClick={() => setVisible(true)} icon={<PlusOutlined />}>
+                            <Button type="primary" onClick={() => setVisible(true)} icon={<PlusOutlined />}>
                                 创建
                             </Button>
                         </div>

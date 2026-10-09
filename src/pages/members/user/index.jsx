@@ -187,19 +187,11 @@ export const User = () => {
     return (
         <>
             <Breadcrumb items={['人员组织', '用户管理']} />
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <Search
-                    allowClear
-                    placeholder="输入搜索关键字"
-                    onSearch={onSearch}
-                    style={{ width: 300 }}
-                />
+            <div className="wa-list-toolbar">
+                <Search className="wa-list-toolbar__search" allowClear placeholder="输入搜索关键字" onSearch={onSearch} />
                 <Button
                     type="primary"
                     onClick={() => setVisible(true)}
-                    style={{
-                        backgroundColor: '#000000'
-                    }}
                     icon={<PlusOutlined />}
                 >
                     创建

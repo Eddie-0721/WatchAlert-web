@@ -98,9 +98,45 @@ test('mobile datasource toolbar and long text remain usable by keyboard', async 
   await copyButton.focus();
   await expect(copyButton).toBeFocused();
   expect(await page.locator('.app-content').evaluate(el=>el.scrollWidth<=el.clientWidth)).toBeTruthy();
-  expect(await page.locator('.datasource-toolbar').evaluate(el=>el.scrollWidth<=el.clientWidth)).toBeTruthy();
+  expect(await page.locator('.wa-list-toolbar').evaluate(el=>el.scrollWidth<=el.clientWidth)).toBeTruthy();
   await page.screenshot({animations:'disabled',path:'test-results/visual/datasource-mobile.png'});
 });
+
+test('notification object name and ID remain usable with long text on mobile',async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  await mockAPI(page);
+  const longName='生产环境支付系统通知对象-'.repeat(5);
+  await page.route('**/notice/noticeList*',route=>route.fulfill({json:{code:200,data:[{id:'n1',uuid:'notice-object-very-long-id-0123456789',name:longName,dutyId:'none',updateAt:1788700000,updateBy:'SRE'}]}}));
+  await page.goto('/noticeObjects');
+  const history=page.getByRole('button',{name:longName,exact:true});
+  const copy=page.getByRole('button',{name:`复制通知对象 ID ${longName}`});
+  await expect(history).toBeVisible();
+  await expect(copy).toBeVisible();
+  await copy.focus();
+  await expect(copy).toBeFocused();
+  expect(await page.locator('.app-content').evaluate(el=>el.scrollWidth<=el.clientWidth)).toBeTruthy();
+  await page.screenshot({animations:'disabled',path:'test-results/visual/noticeObjects-mobile-long-name.png'});
+});
+
+for(const [route,label] of [['/folders','仪表盘目录'],['/noticeObjects','通知对象'],['/user','用户列表'],['/faultCenter','故障中心']]) {
+  test(`${label} shared toolbar stays usable on mobile`,async({page})=>{
+    await page.setViewportSize({width:390,height:844});
+    await mockAPI(page);
+    await page.goto(route);
+    const toolbar=page.locator('.wa-list-toolbar');
+    await expect(toolbar.getByPlaceholder('输入搜索关键字')).toBeVisible();
+    await expect(toolbar.getByRole('button',{name:/创\s*建/})).toBeVisible();
+    expect(await toolbar.evaluate(el=>el.scrollWidth<=el.clientWidth)).toBeTruthy();
+    expect(await page.locator('.app-content').evaluate(el=>el.scrollWidth<=el.clientWidth)).toBeTruthy();
+    if(route==='/noticeObjects') {
+      const headers=page.locator('.ant-table-thead th');
+      await expect(headers.first()).toBeVisible();
+      expect((await headers.first().boundingBox()).width).toBeGreaterThan(120);
+    }
+    if(route==='/faultCenter') await expect(page.getByText('创建时间未知')).toBeVisible();
+    await page.screenshot({animations:'disabled',path:`test-results/visual/${route.slice(1)}-mobile-toolbar.png`});
+  });
+}
 
 test('failed acknowledgement never shows a successful claim', async ({page}) => {
   await mockAPI(page);
@@ -140,6 +176,33 @@ test('Manage separates configuration from health and reports server totals', asy
   await page.screenshot({animations:'disabled',path:'test-results/visual/manage-desktop.png'});
   await page.goto('/manage?tab=sources');
   await expect(page.getByText(/连通性：未检测/)).toBeVisible();
+});
+
+for(const width of [1440,390]) test(`overview text hierarchy and actions remain usable at ${width}px`,async({page})=>{
+  await page.setViewportSize({width,height:900});
+  await mockAPI(page);
+  await page.route('**/api/system/getDashboardInfo*',route=>route.fulfill({json:{code:200,data:{alarmDistribution:{P0:1,P1:0,P2:0},countAlertRules:28,faultCenterNumber:2,userNumber:5,curAlertList:[{fingerprint:'fp-long',ruleName:'生产环境支付服务响应时间告警-'.repeat(4),severity:'P0',datasourceType:'Prometheus',tiggerTime:1788700000}]}}}));
+  await page.goto('/');
+  await expect(page.getByRole('heading',{name:'有告警需要处理'})).toBeVisible();
+  await expect(page.getByRole('button',{name:'询问 Copilot'})).toBeVisible();
+  expect(await page.locator('.app-content').evaluate(el=>el.scrollWidth<=el.clientWidth)).toBeTruthy();
+  await page.screenshot({animations:'disabled',path:`test-results/visual/overview-${width}.png`});
+});
+
+for(const width of [700,390]) test(`Manage rule state stays visible at ${width}px`,async({page})=>{
+  await page.setViewportSize({width,height:900});
+  await mockAPI(page);
+  await page.goto('/manage');
+  await expect(page.locator('.manage-rule-row .manage-rule-state')).toBeVisible();
+  await expect(page.getByText('已启用',{exact:true}).first()).toBeVisible();
+  if(width===390) {
+    const pagination=page.locator('.manage-page .ant-pagination');
+    const firstPage=await pagination.locator('.ant-pagination-item').first().boundingBox();
+    const next=await pagination.locator('.ant-pagination-next').boundingBox();
+    expect(next.y).toBe(firstPage.y);
+  }
+  expect(await page.locator('.app-content').evaluate(el=>el.scrollWidth<=el.clientWidth)).toBeTruthy();
+  await page.screenshot({animations:'disabled',path:`test-results/visual/manage-${width}.png`});
 });
 
 test('Copilot permission failure is explicit and never calls legacy AI', async ({page}) => {

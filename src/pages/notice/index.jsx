@@ -27,37 +27,16 @@ export const NoticeObjects = () => {
             title: '名称',
             dataIndex: 'name',
             key: 'name',
-            width: 'auto',
+            width: 240,
             render: (text, record) => (
-                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    <span 
-                        style={{ 
-                            cursor: 'pointer', 
-                            color: '#1677ff',
-                            textDecoration: 'none'
-                        }}
-                        onClick={() => handleShowHistory(record)}
-                    >
+                <div className="wa-resource-name-cell">
+                    <Button type="link" className="wa-resource-name" title={text} onClick={() => handleShowHistory(record)}>
                         {text}
-                    </span>
+                    </Button>
                     <Tooltip title="点击复制 ID">
-                        <span
-                            style={{
-                                color: '#8c8c8c',     // 灰色字体
-                                fontSize: '12px',
-                                cursor: 'pointer',
-                                userSelect: 'none',
-                                display: 'inline-block',
-                                maxWidth: '200px',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap'
-                            }}
-                            onClick={() => copyToClipboard(record.uuid)}
-                        >
-                            {record.uuid}
-                            <CopyOutlined style={{ marginLeft: 8 }} />
-                        </span>
+                        <Button type="link" className="wa-resource-id" aria-label={`复制通知对象 ID ${text}`} title={record.uuid} onClick={() => copyToClipboard(record.uuid)}>
+                            <span>{record.uuid}</span><CopyOutlined />
+                        </Button>
                     </Tooltip>
                 </div>
             ),
@@ -66,7 +45,7 @@ export const NoticeObjects = () => {
             title: '值班表',
             dataIndex: 'dutyId',
             key: 'dutyId',
-            width: 'auto',
+            width: 240,
             render: (text, record) => (
                 <span>
                   {getDutyNameById(record.dutyId)
@@ -97,7 +76,7 @@ export const NoticeObjects = () => {
             title: "操作人",
             dataIndex: "updateBy",
             key: "updateBy",
-            width: "auto",
+            width: 140,
             render: (text) => {
                 return <Tag style={{
                                 borderRadius: "12px",
@@ -158,6 +137,7 @@ export const NoticeObjects = () => {
                     >
                         <Button
                             type="text"
+                            aria-label={`更多操作：${record.name}`}
                             icon={<MoreOutlined />}
                             style={{ color: "#666" }}
                         />
@@ -281,9 +261,9 @@ export const NoticeObjects = () => {
     return (
         <>
             <Breadcrumb items={['通知管理', '通知对象']} />
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <div>
-                    <Search allowClear placeholder="输入搜索关键字" onSearch={onSearch} style={{ width: 300 }} />
+            <div className="wa-list-toolbar">
+                <div className="wa-list-toolbar__search">
+                    <Search allowClear placeholder="输入搜索关键字" onSearch={onSearch} />
                 </div>
                 <div>
                     <Button
@@ -291,9 +271,6 @@ export const NoticeObjects = () => {
                         onClick={() => {
                             setCreateSelectedRow(null); // 确保正常创建时是个空表单
                             setVisible(true)}}
-                        style={{
-                            backgroundColor: '#000000'
-                        }}
                         icon={<PlusOutlined />}
                     >
                         创建
@@ -317,7 +294,7 @@ export const NoticeObjects = () => {
                     dataSource={list}
                     scroll={{
                         y: height - 250, // 动态设置滚动高度
-                        x: 'max-content', // 水平滚动
+                        x: 900, // 保证窄屏表头不被压成竖排
                     }}
                     style={{
                         backgroundColor: "#fff",

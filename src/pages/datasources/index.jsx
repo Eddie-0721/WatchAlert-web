@@ -31,12 +31,12 @@ export const Datasources = () => {
             dataIndex: 'name',
             key: 'name',
             render: (text, record) => (
-                <div className="datasource-name-cell">
-                    <span className="datasource-name" title={text}>{text}</span>
+                <div className="wa-resource-name-cell">
+                    <span className="wa-resource-name" title={text}>{text}</span>
                     <Tooltip title="点击复制 ID">
                         <Button
                             type="link"
-                            className="datasource-id-copy"
+                            className="wa-resource-id"
                             aria-label={`复制数据源 ID ${text}`}
                             title={record.id}
                             onClick={() => copyToClipboard(record.id)}
@@ -96,7 +96,7 @@ export const Datasources = () => {
                 if (!text) {
                     return '没有留下任何描述~';
                 }
-                return <span className="datasource-description" title={text}>{text}</span>;
+                return <span className="wa-resource-description" title={text}>{text}</span>;
             },
         },
         {
@@ -267,8 +267,8 @@ export const Datasources = () => {
     return (
         <>
             <Breadcrumb items={['数据源']} />
-            <div className="datasource-toolbar">
-                <div className="datasource-toolbar-search">
+            <div className="wa-list-toolbar">
+                <div className="wa-list-toolbar__search">
                     <Search
                         allowClear
                         placeholder="输入搜索关键字"
