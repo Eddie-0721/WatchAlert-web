@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { Modal, Button, Tag, message, Tooltip, Spin, Empty, Alert } from 'antd'
 import { RollbackOutlined } from '@ant-design/icons'
-import SafeDiffEditor from '../../../utils/SafeDiffEditor'
+import { SafeDiffEditor } from '../../../utils/LazyVSCodeEditor'
 import {
     PrometheusTargetVersionList,
     PrometheusTargetVersionGet,

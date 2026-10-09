@@ -20,7 +20,7 @@ import { useParams, useNavigate } from "react-router-dom"
 import { getDatasourceList } from "../../api/datasource"
 import { ProbingCreate, ProbingSearch, ProbingUpdate } from "../../api/probing"
 import { HandleApiError } from "../../utils/lib"
-import VSCodeEditor from "../../utils/VSCodeEditor"
+import VSCodeEditor from "../../utils/LazyVSCodeEditor"
 import { useAppContext } from "../../context/RuleContext"
 import { Breadcrumb } from "../../components/Breadcrumb";
 

@@ -2,7 +2,7 @@ import { PrometheusTargetCreate, PrometheusTargetUpdate } from '../../../api/pro
 import { Modal, Button, message, Alert } from 'antd'
 import { ThunderboltOutlined, CopyOutlined } from '@ant-design/icons'
 import React, { useEffect, useState } from 'react'
-import VSCodeEditor from '../../../utils/VSCodeEditor'
+import VSCodeEditor from '../../../utils/LazyVSCodeEditor'
 
 const EXAMPLE_JSON = JSON.stringify({
     targets: ['192.168.1.1:9090', '192.168.1.2:9090'],

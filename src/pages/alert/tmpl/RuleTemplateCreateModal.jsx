@@ -24,9 +24,9 @@ import ESImg from "../rule/img/ElasticSearch.svg";
 import VLogImg from "../rule/img/victorialogs.svg"
 import CKImg from "../rule/img/clickhouse.svg"
 import {getKubernetesReasonList, getKubernetesResourceList} from "../../../api/kubernetes";
-import VSCodeEditor from "../../../utils/VSCodeEditor";
+import VSCodeEditor from "../../../utils/LazyVSCodeEditor";
 import {PlusOutlined} from "@ant-design/icons";
-import SqlEditor from "../../../utils/sqlEditor";
+import { SqlEditor } from "../../../utils/LazyVSCodeEditor";
 import TextArea from "antd/es/input/TextArea";
 
 const MyFormItemContext = React.createContext([])

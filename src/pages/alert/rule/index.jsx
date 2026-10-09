@@ -43,7 +43,7 @@ import {
     MoreOutlined
 } from "@ant-design/icons"
 import { FaultCenterList } from "../../../api/faultCenter";
-import VSCodeEditor from "../../../utils/VSCodeEditor";
+import VSCodeEditor from "../../../utils/LazyVSCodeEditor";
 import { copyToClipboard } from "../../../utils/copyToClipboard";
 import { HandleApiError, HandleShowTotal } from "../../../utils/lib";
 import { useAppContext } from "../../../context/RuleContext";

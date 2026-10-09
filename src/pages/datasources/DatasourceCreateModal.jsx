@@ -8,7 +8,7 @@ import {
     CloudOutlined,
     ApartmentOutlined, 
 } from "@ant-design/icons"
-import VSCodeEditor from "../../utils/VSCodeEditor";
+import VSCodeEditor from "../../utils/LazyVSCodeEditor";
 import CredentialEditor, { CredentialContext, useCredentialRules } from "../../components/CredentialEditor";
 const { TextArea } = Input
 const { Title, Text } = Typography

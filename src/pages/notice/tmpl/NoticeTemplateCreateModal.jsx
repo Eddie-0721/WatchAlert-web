@@ -1,5 +1,5 @@
 import {Modal, Form, Input, Button, Card, Tooltip, Checkbox, Drawer} from 'antd'
-import VSCodeEditor from "../../../utils/VSCodeEditor";
+import VSCodeEditor from "../../../utils/LazyVSCodeEditor";
 import React, { useEffect, useState } from 'react'
 import { createNoticeTmpl, updateNoticeTmpl } from '../../../api/noticeTmpl'
 import FeiShuImg from "../img/feishu.svg";

@@ -23,20 +23,23 @@ export const Home = () => {
 
     const sequence = useRef(0);
     const currentCenter = useRef();
-    const load = useCallback(async (nextFaultCenterId = currentCenter.current) => {
+    const load = useCallback(async (nextFaultCenterId = currentCenter.current, refreshMetadata = true) => {
         const request = ++sequence.current;
         try {
             setLoading(true);
             setLoadError(false);
-            const [centersRes, metricRes] = await Promise.all([FaultCenterList(), noticeRecordMetric()]);
-            const centers = checked(centersRes) || [];
-            const metric = checked(metricRes);
-            if (request !== sequence.current) return;
-            const activeId = nextFaultCenterId || centers[0]?.id;
-            setFaultCenters(centers);
+            let activeId = nextFaultCenterId;
+            if (refreshMetadata) {
+                const [centersRes, metricRes] = await Promise.all([FaultCenterList(), noticeRecordMetric()]);
+                const centers = checked(centersRes) || [];
+                const metric = checked(metricRes);
+                if (request !== sequence.current) return;
+                activeId = nextFaultCenterId || centers[0]?.id;
+                setFaultCenters(centers);
+                setMetricData(metric || {});
+            }
             setFaultCenterId(activeId);
             currentCenter.current = activeId;
-            setMetricData(metric || {});
             if (activeId) {
                 const info = await getDashboardInfo({ faultCenterId: activeId });
                 const data = checked(info);
@@ -67,7 +70,7 @@ export const Home = () => {
         { label: '活跃用户', value: dashboard?.userNumber ?? 0, note: '当前工作区', tone: 'neutral' },
     ], [dashboard, totalAlerts]);
 
-    const selectCenter = value => { setFaultCenterId(value); load(value); };
+    const selectCenter = value => { setFaultCenterId(value); load(value, false); };
 
     return (
         <div className="ops-overview">

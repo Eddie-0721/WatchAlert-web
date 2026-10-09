@@ -43,9 +43,9 @@ import {getKubernetesReasonList, getKubernetesResourceList} from "../../../api/k
 import { useAppContext } from '../../../context/RuleContext';
 import TextArea from "antd/es/input/TextArea";
 import {FaultCenterList} from "../../../api/faultCenter";
-import VSCodeEditor from "../../../utils/VSCodeEditor";
+import VSCodeEditor from "../../../utils/LazyVSCodeEditor";
 import {SearchViewLogs} from "../preview/searchViewLogs";
-import SqlEditor from "../../../utils/sqlEditor";
+import { SqlEditor } from "../../../utils/LazyVSCodeEditor";
 import {SearchViewMetrics} from "../preview/searchViewMetrics.tsx";
 import {Breadcrumb} from "../../../components/Breadcrumb"
 
