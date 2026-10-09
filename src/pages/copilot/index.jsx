@@ -1,18 +1,17 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Alert, Button, Collapse, Empty, Input, Modal, Select, Spin, Tag, message } from 'antd';
+import { Alert, Button, Empty, Input, Modal, Select, Spin, message } from 'antd';
 import { ArrowUp, Bot, Plus, Square } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { getAgentCapabilities, listAgentSessions, getAgentSession, createAgentSession, confirmAgentAction, streamAgentMessage } from '../../api/agent';
 import { getAlertScope, scopeName, scopeResource } from '../../utils/alertScope';
-import MarkdownRenderer from '../../utils/MarkdownRenderer';
+import CopilotMessages from './CopilotMessages';
+import { applyExecutedAction, parseEvidence, stamp } from './messageState';
 import './index.css';
 import ConnectionDiagnostics from './ConnectionDiagnostics';
 import { safeAlertReturn } from '../../utils/alertView';
 import { coalescedUpdate } from '../../utils/coalescedUpdate';
 
-const parseEvidence = value => { try { const parsed = Array.isArray(value) ? value : JSON.parse(value || '[]'); return Array.isArray(parsed) ? parsed.filter(item => item && typeof item === 'object') : []; } catch { return []; } };
 const eventName = event => event?.rule_name || event?.ruleName || '当前告警';
-const stamp = time => time ? new Date(time * 1000).toLocaleString('zh-CN') : '未记录';
 const compactEvent = event => event ? {
   fingerprint: event.fingerprint, ruleId: event.rule_id || event.ruleId,
   faultCenterId: event.faultCenterId || event.fault_center_id,
@@ -33,7 +32,6 @@ const actionSummary = raw => {
     {preview.impact && <Alert type="warning" showIcon message={`当前匹配 ${preview.impact.total} 条告警`} description="生效期间新增的匹配告警也会静默；确认时将重新校验。范围变化或预览过期需要重新申请。" />}
   </div>;
 };
-const statusText = { completed: '查询成功', failed: '失败', pending_confirmation: '等待确认', executed: '已执行', expired: '已过期', executing: '执行中' };
 
 export const Copilot = () => {
   const location = useLocation();
@@ -174,7 +172,7 @@ export const Copilot = () => {
     }
   };
 
-  const confirmAction = item => {
+  const confirmAction = useCallback(item => {
     if (!canPropose || !item.actionId || !item.payloadHash) return;
     Modal.confirm({
       title: '确认执行此操作？', okText: '确认执行', cancelText: '取消',
@@ -184,22 +182,12 @@ export const Copilot = () => {
         try {
           const action = await confirmAgentAction({ actionId: item.actionId, payloadHash: item.payloadHash });
           if (action.status !== 'executed') throw new Error(action.result || '操作尚未成功执行');
-          setMessages(current => current.map(msg => ({ ...msg, evidence: parseEvidence(msg.evidence).map(entry => entry.actionId === item.actionId ? { ...entry, status: 'executed', summary: 'WatchAlert 已执行此操作', result: action.result } : entry) })));
+          setMessages(current => applyExecutedAction(current, item.actionId, action.result));
           message.success('操作已执行');
         } catch (error) { message.error(error.message); throw error; }
       },
     });
-  };
-
-  const evidenceView = items => items.map((item, index) => <div className="copilot-tool-evidence" key={item.actionId || index}>
-    <div className="copilot-tool-evidence__title"><strong>{item.toolName}</strong><Tag color={item.status === 'failed' ? 'error' : item.status === 'pending_confirmation' ? 'warning' : 'default'}>{statusText[item.status] || item.status}</Tag></div>
-    <p>{item.summary}</p>
-    <p>查询时间：{stamp(item.queriedAt)}{item.truncated ? ' · 结果已截断，不能作为完整统计' : ''}</p>
-    {item.source && <pre>{JSON.stringify(item.source, null, 2)}</pre>}
-    {item.query && <pre>{JSON.stringify(item.query, null, 2)}</pre>}
-    {item.status === 'executed' && <div><Button onClick={()=>navigate(returnTo)}>返回告警核对状态</Button>{item.toolName?.startsWith('silences.') && <Button onClick={()=>navigate('/silenceRules')}>查看静默规则</Button>}</div>}
-    {item.status === 'pending_confirmation' && <Button disabled={!canPropose || loading || capabilityLoading || Boolean(capabilityError)} danger={item.riskLevel === 'high'} onClick={() => confirmAction(item)}>查看并确认</Button>}
-  </div>);
+  }, [canPropose]);
 
   return <div className="copilot-workspace">
     <header className="copilot-workspace__header"><div><h1><Bot size={23} /> WatchAlert Copilot</h1><p>查询告警与指标，核对证据，再决定处置。</p></div><Button onClick={() => navigate(returnTo)}>{location.state?.returnTo ? '返回告警现场' : '查看告警'}</Button></header>
@@ -221,11 +209,9 @@ export const Copilot = () => {
         <small>每次加载 50 条历史消息</small>
         {olderError && <Alert type="warning" showIcon message={olderError} action={<Button onClick={loadOlder} disabled={loading || olderLoading}>重试</Button>} />}
       </div>}
-      {restoring ? <Spin /> : !messages.length ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="描述你要排查的问题，或从告警详情带入事件。" /> : messages.map((item, index) => <article className={`copilot-turn copilot-turn--${item.role}`} key={item.id || index}>
-        <div className="copilot-turn__role">{item.role === 'user' ? '你' : 'Copilot'}{item.incomplete && <Tag>未完成</Tag>}</div>
-        {item.role === 'user' ? <p>{item.content}</p> : <MarkdownRenderer data={item.content || (loading ? '正在查询…' : '未生成完整回复')} />}
-        {parseEvidence(item.evidence).length > 0 && <Collapse className="copilot-message-evidence" items={[{ key: 'evidence', label: `数据来源与操作（${parseEvidence(item.evidence).length}）`, children: evidenceView(parseEvidence(item.evidence)) }]} />}
-      </article>)}
+      {restoring ? <Spin /> : !messages.length ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="描述你要排查的问题，或从告警详情带入事件。" /> : <CopilotMessages messages={messages} loading={loading}
+        actionDisabled={!canPropose || loading || capabilityLoading || Boolean(capabilityError)}
+        onConfirm={confirmAction} navigate={navigate} returnTo={returnTo} />}
       {loading && <div className="copilot-run-status" role="status"><Spin size="small" /> {runStatus || '正在分析受控数据…'}</div>}
     </main>
     {runError && <Alert type="warning" showIcon message={runError} />}
