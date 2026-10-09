@@ -30,6 +30,7 @@ import {
     SearchOutlined // 添加搜索图标
 } from "@ant-design/icons";
 import "../alert/rule/index.css";
+import "./index.css";
 import {FaultCenterList, FaultCenterReset} from "../../api/faultCenter";
 import {HandleShowTotal} from "../../utils/lib";
 
@@ -247,20 +248,19 @@ export const Silences = (props) => {
             key: 'name',
             width: '15%',
             render: (text, record) => (
-                <Space>
-                    <span 
-                        style={{ 
-                            cursor: 'pointer', 
-                            color: '#1890ff',
-                        }}
+                <div className="silence-rule-name-wrap">
+                    <Button
+                        type="link"
+                        className="silence-rule-name"
+                        title={text}
                         onClick={() => {
                             setSelectedRow(record);
                             setUpdateVisible(true);
                         }}
                     >
                         {text}
-                    </span>
-                </Space>
+                    </Button>
+                </div>
             ),
         },
         {
@@ -270,17 +270,12 @@ export const Silences = (props) => {
             render: (_, record) => {
                 const labels = record.labels || [];
                 return (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
+                    <div className="silence-rule-labels">
                         {labels.map((label, index) => (
-                            <Tag 
+                            <Tag
                                 key={index}
                                 color="blue"
-                                style={{
-                                    margin: 0,
-                                    fontSize: '10px',
-                                    textOverflow: 'ellipsis',
-                                    whiteSpace: 'nowrap'
-                                }}
+                                title={`${label.key}${label.operator}${label.value}`}
                             >
                                 {label.key}{label.operator}{label.value}
                             </Tag>
@@ -394,12 +389,8 @@ export const Silences = (props) => {
                 静默规则
             </Title>
             
-            <div style={{ 
-                display: 'flex', 
-                marginBottom: '16px',
-                justifyContent: 'space-between',
-            }}>
-                <div>
+            <div className="silence-rule-toolbar">
+                <div className="silence-rule-filters">
                     <Radio.Group
                         options={[
                             { label: "全部", value: "all" },
@@ -410,16 +401,14 @@ export const Silences = (props) => {
                         defaultValue={selectStatus}
                         onChange={changeStatus}
                         optionType="button"
+                        className="silence-rule-status"
                     />
                     <Search
                         placeholder="搜索规则名称"
                         value={searchInput}
                         onChange={(e) => setSearchInput(e.target.value)}
                         onSearch={handleSearch}
-                        style={{ 
-                            marginLeft: '10px',
-                            width: '300px',
-                        }}
+                        className="silence-rule-search"
                         allowClear
                         prefix={<SearchOutlined />}
                     />
@@ -428,10 +417,6 @@ export const Silences = (props) => {
                     type="primary" 
                     icon={<PlusOutlined />}
                     onClick={() => { setSilenceContext(null); setVisible(true); }}
-                    style={{ 
-                        backgroundColor: '#000',
-                        borderColor: '#000'
-                    }}
                 >
                     添加新规则
                 </Button>
@@ -452,7 +437,7 @@ export const Silences = (props) => {
                     columns={columns}
                     dataSource={list}
                     loading={loading}
-                    scroll={{ y: height - 250 }}
+                    scroll={{ x: 960, y: height - 250 }}
                     pagination={{
                         current: pagination.index,
                         pageSize: pagination.size,

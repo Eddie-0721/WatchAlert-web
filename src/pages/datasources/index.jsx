@@ -31,26 +31,19 @@ export const Datasources = () => {
             dataIndex: 'name',
             key: 'name',
             render: (text, record) => (
-                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    {text}
+                <div className="datasource-name-cell">
+                    <span className="datasource-name" title={text}>{text}</span>
                     <Tooltip title="点击复制 ID">
-                        <span
-                            style={{
-                                color: '#8c8c8c',     // 灰色字体
-                                fontSize: '12px',
-                                cursor: 'pointer',
-                                userSelect: 'none',
-                                display: 'inline-block',
-                                maxWidth: '200px',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap'
-                            }}
+                        <Button
+                            type="link"
+                            className="datasource-id-copy"
+                            aria-label={`复制数据源 ID ${text}`}
+                            title={record.id}
                             onClick={() => copyToClipboard(record.id)}
                         >
-                            {record.id}
-                            <CopyOutlined style={{ marginLeft: 8 }} />
-                        </span>
+                            <span>{record.id}</span>
+                            <CopyOutlined />
+                        </Button>
                     </Tooltip>
                 </div>
             ),
@@ -103,7 +96,7 @@ export const Datasources = () => {
                 if (!text) {
                     return '没有留下任何描述~';
                 }
-                return text;
+                return <span className="datasource-description" title={text}>{text}</span>;
             },
         },
         {
@@ -191,6 +184,7 @@ export const Datasources = () => {
                 >
                     <Button
                         type="text"
+                        aria-label={`更多操作：${record.name}`}
                         icon={<MoreOutlined />}
                         style={{ color: "#666" }}
                     />
@@ -273,12 +267,11 @@ export const Datasources = () => {
     return (
         <>
             <Breadcrumb items={['数据源']} />
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <div>
+            <div className="datasource-toolbar">
+                <div className="datasource-toolbar-search">
                     <Search
                         allowClear
                         placeholder="输入搜索关键字"
-                        style={{ width: 300 }}
                         onSearch={onSearch}
                     />
                 </div>
@@ -286,9 +279,6 @@ export const Datasources = () => {
                     <Button
                         type="primary"
                         onClick={() => setVisible(true)}
-                        style={{
-                            backgroundColor: '#000000'
-                        }}
                         icon={<PlusOutlined />}
                     >
                         创建

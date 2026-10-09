@@ -1,0 +1,60 @@
+.silence-rule-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.silence-rule-filters {
+  display: flex;
+  flex: 1 1 620px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.silence-rule-status {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.silence-rule-search {
+  flex: 1 1 220px;
+  min-width: 0;
+  max-width: 320px;
+}
+
+.silence-rule-name-wrap { max-width: 100%; }
+.silence-rule-name {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  padding: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.silence-rule-labels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  min-width: 0;
+}
+
+.silence-rule-labels .ant-tag {
+  max-width: 100%;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  .silence-rule-filters { flex-basis: 100%; }
+  .silence-rule-search { max-width: none; }
+}

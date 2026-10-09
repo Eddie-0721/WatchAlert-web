@@ -85,7 +85,7 @@
 }
 
 @media (max-width: 768px) {
-  .app-content { padding: 24px 18px 88px; }
+  .app-content { padding: 24px 16px 88px; }
   .app-footer { display: none; }
   .legacy-page-header { margin-bottom: 20px; padding-bottom: 18px; }
   .legacy-page-header h1 { font-size: 22px; }

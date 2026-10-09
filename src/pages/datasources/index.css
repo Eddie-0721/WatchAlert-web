@@ -1,5 +1,57 @@
 
 /* 状态容器 */
+.datasource-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.datasource-toolbar-search {
+    flex: 1 1 220px;
+    min-width: 0;
+    max-width: 320px;
+}
+
+.datasource-name-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    min-width: 0;
+}
+
+.datasource-name,
+.datasource-description {
+    display: block;
+    max-width: 320px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.datasource-id-copy {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    max-width: 220px;
+    height: auto;
+    padding: 0;
+    color: #71717a;
+    font-size: 12px;
+}
+
+.datasource-id-copy span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+    .datasource-toolbar-search { flex-basis: 100%; max-width: none; }
+}
+
 .status-container {
     display: flex;
     align-items: center;

@@ -72,6 +72,36 @@ test('silence loading failure has a retry and search waits for submission', asyn
   await expect.poll(()=>queries.at(-1)).toBe('payment');
 });
 
+test('mobile silence filters and long rule content stay within the page', async ({page}) => {
+  await page.setViewportSize({width:390,height:844});
+  await mockAPI(page);
+  const longName='生产环境支付集群长期维护窗口-'.repeat(6);
+  await page.route('**/silence/silenceList*',route=>route.fulfill({json:{code:200,data:{index:1,size:10,total:1,list:[{id:'s1',name:longName,faultCenterId:'fc',labels:[{key:'instance',operator:'=',value:'payment-api-very-long-resource-name-0123456789.namespace.svc.cluster.local:9090'}],status:1,startsAt:1788700000,endsAt:1788800000,updateAt:1788700000}]}}}));
+  await page.goto('/silenceRules');
+  await expect(page.getByRole('button',{name:longName,exact:true})).toBeVisible();
+  expect(await page.locator('.app-content').evaluate(el=>el.scrollWidth<=el.clientWidth)).toBeTruthy();
+  expect(await page.locator('.silence-rule-toolbar').evaluate(el=>el.scrollWidth<=el.clientWidth)).toBeTruthy();
+  await page.screenshot({animations:'disabled',path:'test-results/visual/silence-mobile-list.png'});
+  await page.getByRole('button',{name:longName,exact:true}).click();
+  await expect(page.getByText('编辑静默规则',{exact:true})).toBeVisible();
+  await page.screenshot({animations:'disabled',path:'test-results/visual/silence-mobile.png'});
+});
+
+test('mobile datasource toolbar and long text remain usable by keyboard', async ({page}) => {
+  await page.setViewportSize({width:390,height:844});
+  await mockAPI(page);
+  const longName='生产环境支付系统 Prometheus 数据源-'.repeat(4);
+  await page.route('**/api/**/dataSourceList*',route=>route.fulfill({json:{code:200,data:[{id:'datasource-very-long-id-0123456789-abcdef',name:longName,type:'Prometheus',enabled:true,description:'跨多个环境的指标采集数据源。'.repeat(12)}]}}));
+  await page.goto('/datasource');
+  const copyButton=page.getByRole('button',{name:`复制数据源 ID ${longName}`});
+  await expect(copyButton).toBeVisible();
+  await copyButton.focus();
+  await expect(copyButton).toBeFocused();
+  expect(await page.locator('.app-content').evaluate(el=>el.scrollWidth<=el.clientWidth)).toBeTruthy();
+  expect(await page.locator('.datasource-toolbar').evaluate(el=>el.scrollWidth<=el.clientWidth)).toBeTruthy();
+  await page.screenshot({animations:'disabled',path:'test-results/visual/datasource-mobile.png'});
+});
+
 test('failed acknowledgement never shows a successful claim', async ({page}) => {
   await mockAPI(page);
   await page.route('**/event/process', route=>route.fulfill({status:400,json:{code:400,data:'认领未全部确认：0 条已认领，1 条未确认；请刷新核对实际状态',msg:'failed'}}));
