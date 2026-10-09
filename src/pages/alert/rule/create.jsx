@@ -42,7 +42,7 @@ import {PrometheusPromQL} from "../../promethues";
 import {getKubernetesReasonList, getKubernetesResourceList} from "../../../api/kubernetes";
 import { useAppContext } from '../../../context/RuleContext';
 import TextArea from "antd/es/input/TextArea";
-import {FaultCenterList} from "../../../api/faultCenter";
+import {FaultCenterOptions} from "../../../api/faultCenter";
 import VSCodeEditor from "../../../utils/LazyVSCodeEditor";
 import {SearchViewLogs} from "../preview/searchViewLogs";
 import { SqlEditor } from "../../../utils/LazyVSCodeEditor";
@@ -483,7 +483,7 @@ export const AlertRule = ({ type }) => {
 
     const handleGetFaultCenterList = async () => {
         try {
-            const res = await FaultCenterList()
+            const res = await FaultCenterOptions()
             const newData = res.data?.map((item) => ({
                 label: item.name,
                 value: item.id,

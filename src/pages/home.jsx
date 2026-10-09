@@ -3,7 +3,7 @@ import { Alert, Button, Empty, Select, Spin, Tooltip, message } from 'antd';
 import { ArrowRight, Bot, CircleAlert, RefreshCw, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { getDashboardInfo } from '../api/other';
-import { FaultCenterList } from '../api/faultCenter';
+import { FaultCenterOptions } from '../api/faultCenter';
 import { noticeRecordMetric } from '../api/notice';
 import { NoticeMetricChart } from './chart/noticeMetricChart';
 import { FormatTime } from '../utils/lib';
@@ -30,7 +30,7 @@ export const Home = () => {
             setLoadError(false);
             let activeId = nextFaultCenterId;
             if (refreshMetadata) {
-                const [centersRes, metricRes] = await Promise.all([FaultCenterList(), noticeRecordMetric()]);
+                const [centersRes, metricRes] = await Promise.all([FaultCenterOptions(), noticeRecordMetric()]);
                 const centers = checked(centersRes) || [];
                 const metric = checked(metricRes);
                 if (request !== sequence.current) return;

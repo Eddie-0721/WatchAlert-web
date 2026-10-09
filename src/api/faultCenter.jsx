@@ -12,6 +12,12 @@ async function FaultCenterList(params) {
     }
 }
 
+// Selectors need identity only. Older backends may ignore view and return the
+// full list; callers still consume only id/name without an extra fallback read.
+export function FaultCenterOptions(params) {
+    return FaultCenterList({ ...params, view: 'options' });
+}
+
 async function FaultCenterSearch(params) {
     try {
         const res = await http('get', '/api/w8t/faultCenter/faultCenterSearch', params);

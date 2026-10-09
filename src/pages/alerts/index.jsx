@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Button, Drawer, Empty, Input, Pagination, Select, Spin, Tag, message } from 'antd';
 import { BellOff, Check, ChevronRight, Filter, Search, Sparkles } from 'lucide-react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
-import { FaultCenterList } from '../../api/faultCenter';
+import { FaultCenterOptions } from '../../api/faultCenter';
 import { getCurEventList, getHisEventList, ProcessAlertEvent } from '../../api/event';
 import { FormatTime } from '../../utils/lib';
 import { buildSilenceContext, getAlertScope, importantScopeLabels, scopeName, scopeResource } from '../../utils/alertScope';
@@ -82,7 +82,7 @@ export const AlertStream = () => {
     const activeCenterId = centerId === 'all' ? undefined : centerId;
 
     const loadCenters = useCallback(async () => {
-        const res = await FaultCenterList();
+        const res = await FaultCenterOptions();
         if (res?.code !== 200) throw new Error('加载故障中心失败');
         setCenters(res?.data || []);
     }, []);

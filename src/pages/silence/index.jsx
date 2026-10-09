@@ -31,7 +31,7 @@ import {
 } from "@ant-design/icons";
 import "../alert/rule/index.css";
 import "./index.css";
-import {FaultCenterList, FaultCenterReset} from "../../api/faultCenter";
+import {FaultCenterOptions, FaultCenterReset} from "../../api/faultCenter";
 import {HandleShowTotal} from "../../utils/lib";
 
 const { Title } = Typography
@@ -82,7 +82,7 @@ export const Silences = (props) => {
     }, [])
 
     useEffect(() => {
-        FaultCenterList().then(res => setFaultCenters(res?.data || [])).catch(() => setFaultCenters([]));
+        FaultCenterOptions().then(res => setFaultCenters(res?.data || [])).catch(() => setFaultCenters([]));
     }, []);
 
     useEffect(() => {

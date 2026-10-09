@@ -42,7 +42,7 @@ import {
     ReloadOutlined,
     MoreOutlined
 } from "@ant-design/icons"
-import { FaultCenterList } from "../../../api/faultCenter";
+import { FaultCenterOptions } from "../../../api/faultCenter";
 import VSCodeEditor from "../../../utils/LazyVSCodeEditor";
 import { copyToClipboard } from "../../../utils/copyToClipboard";
 import { HandleApiError, HandleShowTotal } from "../../../utils/lib";
@@ -591,7 +591,7 @@ export const AlertRuleList = () => {
 
     const fetchFaultCenterList = async () => {
         try {
-            const res = await FaultCenterList()
+            const res = await FaultCenterOptions()
             const newData = res?.data?.map((item) => ({
                 label: item.name,
                 value: item.id,
