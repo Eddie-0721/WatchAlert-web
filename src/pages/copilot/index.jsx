@@ -8,6 +8,7 @@ import MarkdownRenderer from '../../utils/MarkdownRenderer';
 import './index.css';
 import ConnectionDiagnostics from './ConnectionDiagnostics';
 import { safeAlertReturn } from '../../utils/alertView';
+import { coalescedUpdate } from '../../utils/coalescedUpdate';
 
 const parseEvidence = value => { try { const parsed = Array.isArray(value) ? value : JSON.parse(value || '[]'); return Array.isArray(parsed) ? parsed.filter(item => item && typeof item === 'object') : []; } catch { return []; } };
 const eventName = event => event?.rule_name || event?.ruleName || '当前告警';
@@ -101,6 +102,7 @@ export const Copilot = () => {
     const controller = new AbortController(); abortRef.current = controller;
     let finalReceived = false;
     const updateReply = patch => setMessages(current => current.map(item => item.id === replyId ? { ...item, ...patch } : item));
+    const streamedReply = coalescedUpdate(content => updateReply({ content }));
     try {
       let activeId = sessionId;
       if (!activeId) { const created = await createAgentSession({ title: selectedEvent ? eventName(selectedEvent) : content }); activeId = created.id; setSessionId(activeId); }
@@ -108,15 +110,17 @@ export const Copilot = () => {
       let text = '';
       await streamAgentMessage({ sessionId: activeId, content, context: { selectedAlert: compactEvent(selectedEvent), timeRange } }, event => {
         if (event.type === 'status') setRunStatus(event.message || '正在分析…');
-        if (event.type === 'delta') { text += event.delta || ''; updateReply({ content: text }); }
+        if (event.type === 'delta') { text += event.delta || ''; streamedReply.push(text); }
         if (event.type === 'error') throw new Error(event.message || '分析失败');
-        if (event.type === 'done') { finalReceived = true; updateReply({ content: event.content || text, evidence: parseEvidence(event.evidence) }); }
+        if (event.type === 'done') { finalReceived = true; streamedReply.cancel(); updateReply({ content: event.content || text, evidence: parseEvidence(event.evidence) }); }
       }, controller.signal);
       if (!finalReceived) throw new Error('连接中断，尚未收到完整分析结果。');
     } catch (error) {
+      streamedReply.flush();
       const reason = error.name === 'AbortError' ? '已停止生成；本轮内容可能不完整。' : error.message;
       setRunError(reason); updateReply({ incomplete: true });
     } finally {
+      streamedReply.cancel();
       busyRef.current = false; setLoading(false); setRunStatus(''); abortRef.current = null; loadSessions();
     }
   };

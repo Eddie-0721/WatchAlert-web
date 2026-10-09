@@ -1,9 +1,19 @@
-import React, { useEffect, useState } from 'react';
+import React, { memo, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import SyntaxHighlighter from 'react-syntax-highlighter/dist/esm/prism-light';
+import bash from 'react-syntax-highlighter/dist/esm/languages/prism/bash';
+import json from 'react-syntax-highlighter/dist/esm/languages/prism/json';
+import yaml from 'react-syntax-highlighter/dist/esm/languages/prism/yaml';
+import sql from 'react-syntax-highlighter/dist/esm/languages/prism/sql';
+import go from 'react-syntax-highlighter/dist/esm/languages/prism/go';
+import python from 'react-syntax-highlighter/dist/esm/languages/prism/python';
+import javascript from 'react-syntax-highlighter/dist/esm/languages/prism/javascript';
+import typescript from 'react-syntax-highlighter/dist/esm/languages/prism/typescript';
 import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import 'github-markdown-css/github-markdown.css';
 import {Empty} from "antd";
+
+Object.entries({ bash, json, yaml, sql, go, python, javascript, typescript }).forEach(([name, grammar]) => SyntaxHighlighter.registerLanguage(name, grammar));
 
 // 自定义代码块渲染器
 const CodeRenderer = ({ language, value }) => {
@@ -28,21 +38,9 @@ const CodeRenderer = ({ language, value }) => {
 
 // Markdown渲染组件
 const MarkdownRenderer = ({ data }) => {
-    const [markdown, setMarkdown] = useState('');
-
-    useEffect(() => {
-        if (!data) {
-            setMarkdown('');
-            return;
-        }
-
-        // 处理换行符
-        const formattedData = data
+    const markdown = useMemo(() => (data || '')
             .replace(/\\\n/g, ' ') // 处理反斜杠换行
-            .replace(/(\r\n|\r|\n)/g, '\n\n'); // 处理不同类型的换行符
-
-        setMarkdown(formattedData);
-    }, [data]);
+            .replace(/(\r\n|\r|\n)/g, '\n\n'), [data]);
 
     if (!data) {
         return (
@@ -185,4 +183,4 @@ const MarkdownRenderer = ({ data }) => {
     );
 };
 
-export default MarkdownRenderer;
+export default memo(MarkdownRenderer);

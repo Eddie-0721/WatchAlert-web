@@ -67,3 +67,36 @@ for (const route of ['/ruleGroup/g/rule/list', '/tmplType/Prometheus/g/templates
     }
   });
 }
+
+for (const outcome of ['done', 'error']) {
+  test(`Copilot burst updates preserve ${outcome} and readable code blocks`, async ({ page }) => {
+    await mockAPI(page);
+    const errors = [];
+    page.on('pageerror', error => errors.push(error.message));
+    await page.route('**/agent/capabilities', route => route.fulfill({ json: { code: 200, data: { enabled: true, allowedTools: [], canWrite: false, scope: {} } } }));
+    await page.route('**/agent/sessionList*', route => route.fulfill({ json: { code: 200, data: [] } }));
+    await page.route('**/agent/sessionCreate', route => route.fulfill({ json: { code: 200, data: { id: 'perf' } } }));
+    const final = '最终分析结果\n```yaml\nenv: production\n```\n```unsupportedlang\nopaque-value\n```';
+    await page.route('**/agent/sessionMessageStream', route => {
+      const deltas = Array.from({ length: 1000 }, () => 'event: delta\ndata: {"delta":"片"}\n\n').join('');
+      const terminal = outcome === 'done' ? { content: final, evidence: '[]' } : { message: '查询超时，请缩小范围' };
+      return route.fulfill({ contentType: 'text/event-stream', body: deltas + `event: ${outcome}\ndata: ${JSON.stringify(terminal)}\n\n` });
+    });
+    await page.goto('/copilot');
+    await page.getByRole('textbox', { name: '输入问题' }).fill('分析当前告警');
+    await page.getByRole('button', { name: '发送', exact: true }).click();
+    if (outcome === 'done') {
+      await expect(page.getByText('最终分析结果', { exact: true })).toBeVisible();
+      await expect(page.locator('.markdown-body')).toContainText('env: production');
+      await expect(page.locator('.markdown-body')).toContainText('opaque-value');
+      // Let any stale coalescing timer fire; it must not overwrite the final reply.
+      await page.waitForTimeout(120);
+      await expect(page.getByText('最终分析结果', { exact: true })).toBeVisible();
+      await expect(page.locator('.markdown-body')).not.toContainText('片');
+    } else {
+      await expect(page.getByText('查询超时，请缩小范围', { exact: true })).toBeVisible();
+      await expect(page.locator('.markdown-body')).toContainText('片'.repeat(1000));
+    }
+    expect(errors).toEqual([]);
+  });
+}
