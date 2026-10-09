@@ -24,6 +24,77 @@ async function mockAPI(page) {
   return requests;
 }
 
+for (const width of [1440, 390]) {
+  test(`Copilot history pages, retries and keeps context at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await mockAPI(page);
+    await page.route('**/agent/capabilities', route => route.fulfill({ json: { code: 200, data: { enabled: true, allowedTools: [], canWrite: false, scope: {} } } }));
+    await page.route('**/agent/sessionList*', route => route.fulfill({ json: { code: 200, data: [{ id: 'history', title: '长会话验收' }] } }));
+    const requests = [];
+    let fail = true;
+    await page.route('**/agent/sessionGet*', route => {
+      const query = new URL(route.request().url()).searchParams;
+      requests.push(query);
+      if (query.has('before') && fail) { fail = false; return route.fulfill({ status: 503 }); }
+      const old = query.has('before');
+      return route.fulfill({ json: { code: 200, data: {
+        session: { id: 'history' }, hasMore: !old, nextCursor: old ? '' : 'opaque+/cursor=',
+        messages: Array.from({ length: old ? 5 : 50 }, (_, index) => ({
+          id: `${old ? 'old' : 'new'}-${index}`, role: index % 2 ? 'assistant' : 'user',
+          content: old ? `早期记录 ${index}` : `当前记录 ${index}`, evidence: '[]',
+        })),
+      } } });
+    });
+    await page.goto('/copilot');
+    await page.getByRole('combobox', { name: '历史会话' }).click();
+    await page.locator('.ant-select-item-option').filter({ hasText: '长会话验收' }).click();
+    await expect(page.locator('.copilot-turn')).toHaveCount(50);
+    expect(requests[0].get('limit')).toBe('50');
+    await expect(page.getByText('早期记录 0', { exact: true })).toHaveCount(0);
+    const older = page.getByRole('button', { name: '加载更早消息' });
+    await older.click();
+    await expect(page.getByText(/更早消息加载失败/)).toBeVisible();
+    await expect(page.locator('.copilot-turn')).toHaveCount(50);
+    const anchor = page.locator('.copilot-turn').first();
+    const before = await anchor.boundingBox();
+    await page.locator('.copilot-history-control').getByRole('button', { name: /重\s*试/ }).click();
+    await expect(page.locator('.copilot-turn')).toHaveCount(55);
+    expect(requests.at(-1).get('before')).toBe('opaque+/cursor=');
+    await expect(older).toHaveCount(0);
+    const after = await page.locator('.copilot-turn').filter({ hasText: '当前记录 0' }).boundingBox();
+    expect(Math.abs(after.y - before.y)).toBeLessThan(5);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.locator('.copilot-turn').first().scrollIntoViewIfNeeded();
+    await expect(page.getByText('早期记录 0', { exact: true })).toBeVisible();
+    await page.screenshot({ path: `test-results/copilot-history-${width}.png` });
+  });
+}
+
+test('late history page cannot repopulate a new conversation', async ({ page }) => {
+  await mockAPI(page);
+  await page.route('**/agent/capabilities', route => route.fulfill({ json: { code: 200, data: { enabled: true, allowedTools: [], canWrite: false, scope: {} } } }));
+  await page.route('**/agent/sessionList*', route => route.fulfill({ json: { code: 200, data: [{ id: 'history', title: '旧会话' }] } }));
+  let release;
+  const pending = new Promise(resolve => { release = resolve; });
+  let requested = false;
+  await page.route('**/agent/sessionGet*', async route => {
+    const old = new URL(route.request().url()).searchParams.has('before');
+    if (old) { requested = true; await pending; }
+    await route.fulfill({ json: { code: 200, data: { session: { id: 'history' }, hasMore: !old, nextCursor: old ? '' : 'cursor', messages: [{ id: old ? 'old' : 'new', role: 'user', content: old ? '不应复活' : '现有历史' }] } } }).catch(() => {});
+  });
+  await page.goto('/copilot');
+  await page.getByRole('combobox', { name: '历史会话' }).click();
+  await page.locator('.ant-select-item-option').filter({ hasText: '旧会话' }).click();
+  await page.getByRole('button', { name: '加载更早消息' }).click();
+  await expect.poll(() => requested).toBe(true);
+  await page.getByRole('button', { name: '新对话', exact: true }).click();
+  release();
+  await expect(page.locator('.copilot-turn')).toHaveCount(0);
+  await expect(page.getByText('描述你要排查的问题，或从告警详情带入事件。')).toBeVisible();
+  await page.waitForLoadState('networkidle');
+  await expect(page.locator('.copilot-turn')).toHaveCount(0);
+});
+
 test('switching overview center only reloads its dashboard; refresh reloads all data', async ({ page }) => {
   const requests = await mockAPI(page);
   const count = suffix => requests.filter(url => url.pathname.endsWith(suffix)).length;

@@ -1,7 +1,20 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { parseStreamBlock, streamAgentMessage } from './agent';
+import { getAgentSession, parseStreamBlock, streamAgentMessage } from './agent';
 
 afterEach(() => vi.unstubAllGlobals());
+it('requests bounded session history with encoded cursors and cancellation', async () => {
+  vi.stubGlobal('localStorage', { getItem: () => 'test' });
+  const fetcher = vi.fn(async () => new Response(JSON.stringify({ code: 200, data: { messages: [], hasMore: false } })));
+  vi.stubGlobal('fetch', fetcher);
+  const controller = new AbortController();
+  await getAgentSession('session&1', 'opaque+/=', controller.signal);
+  const [path, options] = (fetcher.mock.calls as unknown as [string, RequestInit][])[0];
+  const url = new URL(path, 'http://localhost');
+  expect(url.searchParams.get('sessionId')).toBe('session&1');
+  expect(url.searchParams.get('limit')).toBe('50');
+  expect(url.searchParams.get('before')).toBe('opaque+/=');
+  expect(options.signal).toBe(controller.signal);
+});
 describe('Agent SSE transport', () => {
   it('handles comments and multiline CRLF data', () => {
     expect(parseStreamBlock(': keepalive')).toBeNull();

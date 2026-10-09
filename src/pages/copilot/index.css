@@ -11,6 +11,9 @@
 .copilot-scope span, .copilot-scope-note { color: #4d4d4d; font-size: 13px; }
 .copilot-scope small { color: #71717a; font-size: 12px; }
 .copilot-conversation { min-width: 0; min-height: 240px; padding: 24px 0; }
+.copilot-history-control { max-width: 960px; margin: 0 auto 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.copilot-history-control small { font-size: 12px; color: #4d4d4d; }
+.copilot-history-control .ant-alert { width: 100%; }
 .copilot-turn { max-width: 960px; margin: 0 auto 24px; padding: 20px; border: 1px solid #ebebeb; border-radius: 8px; background: white; overflow-wrap: anywhere; }
 .copilot-turn--user { background: #f5f5f5; }
 .copilot-turn__role { display: flex; align-items: center; gap: 12px; font-size: 12px; font-weight: 600; margin-bottom: 12px; color: #71717a; }

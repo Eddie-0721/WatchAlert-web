@@ -11,8 +11,8 @@ interface Envelope<T> { code: number; data: T; msg: string }
 export interface StreamEvent { type: string; delta?: string; content?: string; evidence?: string; message?: string }
 const headers = () => ({ 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('Authorization') || ''}`, TenantID: localStorage.getItem('TenantID') || '' });
 
-async function request<T>(path: string, body?: unknown): Promise<T> {
-  const response = await fetch(`/api/w8t/agent/${path}`, { method: body === undefined ? 'GET' : 'POST', headers: headers(), body: body === undefined ? undefined : JSON.stringify(body) });
+async function request<T>(path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
+  const response = await fetch(`/api/w8t/agent/${path}`, { method: body === undefined ? 'GET' : 'POST', headers: headers(), body: body === undefined ? undefined : JSON.stringify(body), signal });
   if (!response.ok) throw new Error(response.status === 403 ? '无权访问 Copilot，请联系管理员配置权限。' : `Copilot 请求失败（${response.status}）`);
   const result: Envelope<T> = await response.json();
   if (result.code !== 200 && result.code !== 0) throw new Error(typeof result.data === 'string' ? result.data : result.msg || 'Copilot 请求失败');
@@ -20,7 +20,11 @@ async function request<T>(path: string, body?: unknown): Promise<T> {
 }
 export const getAgentCapabilities = () => request<Capabilities>('capabilities');
 export const listAgentSessions = () => request<AgentSession[]>('sessionList');
-export const getAgentSession = (id: string) => request<{ session: AgentSession; messages: AgentMessage[] }>(`sessionGet?sessionId=${encodeURIComponent(id)}`);
+export const getAgentSession = (id: string, before = '', signal?: AbortSignal) => {
+  const query = new URLSearchParams({ sessionId: id, limit: '50' });
+  if (before) query.set('before', before);
+  return request<{ session: AgentSession; messages: AgentMessage[]; hasMore?: boolean; nextCursor?: string }>(`sessionGet?${query}`, undefined, signal);
+};
 export const createAgentSession = (body: {title: string}) => request<AgentSession>('sessionCreate', body);
 export const confirmAgentAction = (body: { actionId: string; payloadHash: string }) => request<{status: string; result?: string}>('actionConfirm', body);
 

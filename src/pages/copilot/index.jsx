@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Alert, Button, Collapse, Empty, Input, Modal, Select, Spin, Tag, message } from 'antd';
 import { ArrowUp, Bot, Plus, Square } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -54,11 +54,34 @@ export const Copilot = () => {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [restoring, setRestoring] = useState(false);
+  const [olderLoading, setOlderLoading] = useState(false);
+  const [olderError, setOlderError] = useState('');
+  const [nextCursor, setNextCursor] = useState('');
   const [runError, setRunError] = useState('');
   const [runStatus, setRunStatus] = useState('');
   const abortRef = useRef(null);
   const busyRef = useRef(false);
   const sessionRequest = useRef(0);
+  const historyAbort = useRef(null);
+  const olderBusy = useRef(false);
+  const conversationRef = useRef(null);
+  const scrollAnchor = useRef(null);
+
+  useLayoutEffect(() => {
+    const anchor = scrollAnchor.current;
+    scrollAnchor.current = null;
+    if (anchor?.element.isConnected) {
+      const delta = anchor.element.getBoundingClientRect().top - anchor.top;
+      const container = conversationRef.current?.closest('.app-content');
+      if (container) container.scrollTop += delta;
+    }
+  }, [messages]);
+
+  const resetHistory = (clearCursor = true) => {
+    historyAbort.current?.abort(); olderBusy.current = false;
+    scrollAnchor.current = null; setOlderLoading(false); setOlderError('');
+    if (clearCursor) setNextCursor('');
+  };
 
   const loadCapabilities = useCallback(async () => {
     setCapabilityLoading(true); setCapabilityError('');
@@ -70,24 +93,50 @@ export const Copilot = () => {
     try { setSessions(await listAgentSessions() || []); setSessionError(''); }
     catch { setSessionError('历史会话加载失败'); }
   }, []);
-  useEffect(() => { loadCapabilities(); loadSessions(); return () => { abortRef.current?.abort(); sessionRequest.current++; }; }, [loadCapabilities, loadSessions]);
+  useEffect(() => { loadCapabilities(); loadSessions(); return () => { abortRef.current?.abort(); historyAbort.current?.abort(); sessionRequest.current++; }; }, [loadCapabilities, loadSessions]);
   const disabled = capabilityLoading || Boolean(capabilityError) || !capabilities?.enabled || restoring;
   const canPropose = capabilities?.canWrite && capabilities?.enabled;
   const newConversation = () => {
     if (busyRef.current) return;
-    sessionRequest.current++; setSelectedEvent(initialEvent); setQueryWindow(null); setSessionId(null); setMessages([]); setRunError(''); setInput('');
+    sessionRequest.current++; resetHistory(); setRestoring(false); setSelectedEvent(initialEvent); setQueryWindow(null); setSessionId(null); setMessages([]); setRunError(''); setInput('');
   };
   const restore = async id => {
     if (busyRef.current) return;
     const sequence = ++sessionRequest.current;
+    resetHistory(false);
+    const controller = new AbortController(); historyAbort.current = controller;
     setRestoring(true); setRunError('');
     try {
-      const result = await getAgentSession(id);
+      const result = await getAgentSession(id, '', controller.signal);
       if (sequence !== sessionRequest.current) return;
       setSelectedEvent(null); setQueryWindow(null); setSessionId(result.session.id);
       setMessages((result.messages || []).map(item => ({ ...item, evidence: parseEvidence(item.evidence) })));
-    } catch (error) { setRunError(error.message); }
+      setNextCursor(result.hasMore ? result.nextCursor || '' : '');
+    } catch (error) { if (sequence === sessionRequest.current && error.name !== 'AbortError') setRunError(error.message); }
     finally { if (sequence === sessionRequest.current) setRestoring(false); }
+  };
+
+  const loadOlder = async () => {
+    if (!nextCursor || !sessionId || olderBusy.current || busyRef.current || restoring) return;
+    olderBusy.current = true; setOlderLoading(true);
+    const sequence = sessionRequest.current;
+    const controller = new AbortController(); historyAbort.current = controller;
+    try {
+      const result = await getAgentSession(sessionId, nextCursor, controller.signal);
+      if (sequence !== sessionRequest.current) return;
+      const element = conversationRef.current?.querySelector('.copilot-turn');
+      if (element) scrollAnchor.current = { element, top: element.getBoundingClientRect().top };
+      setOlderError('');
+      setMessages(current => {
+        const ids = new Set(current.map(item => item.id));
+        return [...(result.messages || []).filter(item => !ids.has(item.id)).map(item => ({ ...item, evidence: parseEvidence(item.evidence) })), ...current];
+      });
+      setNextCursor(result.hasMore ? result.nextCursor || '' : '');
+    } catch (error) {
+      if (sequence === sessionRequest.current && error.name !== 'AbortError') setOlderError(`更早消息加载失败：${error.message}`);
+    } finally {
+      if (sequence === sessionRequest.current) { olderBusy.current = false; setOlderLoading(false); }
+    }
   };
 
   const send = async (question = input) => {
@@ -166,7 +215,12 @@ export const Copilot = () => {
     {selectedEvent && <div className="copilot-scope"><strong>当前线索：{eventName(selectedEvent)}</strong><span>{scopeName(getAlertScope(selectedEvent))} · {scopeResource(getAlertScope(selectedEvent))}</span><small>页面上下文仅作线索，分析需重新查询；历史消息保留原有证据。</small><Button size="small" disabled={loading} onClick={()=>setSelectedEvent(null)}>移除当前线索</Button></div>}
     {capabilities?.scope?.environments?.length > 0 && <p className="copilot-scope-note">授权环境：{capabilities.scope.environments.join('、')}</p>}
     <div className="copilot-time-window"><span>本轮分析范围</span><Select aria-label="分析时间范围" disabled={loading || restoring} value={windowMinutes} onChange={setWindowMinutes} options={[{value:30,label:'最近 30 分钟'},{value:60,label:'最近 1 小时'},{value:360,label:'最近 6 小时'}]} /><small>{queryWindow ? `最近发送：${stamp(queryWindow.start)} — ${stamp(queryWindow.end)}` : '发送时固定时间窗口，实际查询范围以证据为准'}</small></div>
-    <main className="copilot-conversation" aria-label="Copilot 对话">
+    <main className="copilot-conversation" aria-label="Copilot 对话" ref={conversationRef}>
+      {!restoring && nextCursor && <div className="copilot-history-control">
+        <Button onClick={loadOlder} loading={olderLoading} disabled={loading}>加载更早消息</Button>
+        <small>每次加载 50 条历史消息</small>
+        {olderError && <Alert type="warning" showIcon message={olderError} action={<Button onClick={loadOlder} disabled={loading || olderLoading}>重试</Button>} />}
+      </div>}
       {restoring ? <Spin /> : !messages.length ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="描述你要排查的问题，或从告警详情带入事件。" /> : messages.map((item, index) => <article className={`copilot-turn copilot-turn--${item.role}`} key={item.id || index}>
         <div className="copilot-turn__role">{item.role === 'user' ? '你' : 'Copilot'}{item.incomplete && <Tag>未完成</Tag>}</div>
         {item.role === 'user' ? <p>{item.content}</p> : <MarkdownRenderer data={item.content || (loading ? '正在查询…' : '未生成完整回复')} />}
