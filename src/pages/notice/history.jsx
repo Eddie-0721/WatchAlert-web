@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, useMemo } from "react"
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import {
     Table,
     message,
@@ -44,6 +44,7 @@ const ITEMS_PER_PAGE = 10
 export const NoticeRecords = ({ noticeObjectId }) => {
     const [height, setHeight] = useState(window.innerHeight)
     const [loading, setLoading] = useState(false)
+    const [loadError, setLoadError] = useState(false)
     const [list, setList] = useState([])
     const [selectedRecord, setSelectedRecord] = useState(null)
     const [drawerOpen, setDrawerOpen] = useState(false)
@@ -57,6 +58,12 @@ export const NoticeRecords = ({ noticeObjectId }) => {
         pageSize: ITEMS_PER_PAGE,
         pageTotal: 0,
     })
+    const requestSequence = useRef(0)
+    const activeRequest = useRef(null)
+    const searchTimer = useRef(null)
+    const typedQuery = useRef(null)
+    const previousQuery = useRef(filters.query)
+    const [composing, setComposing] = useState(false)
 
     // Table columns definition
     const columns = useMemo(
@@ -177,8 +184,6 @@ export const NoticeRecords = ({ noticeObjectId }) => {
             setHeight(window.innerHeight)
         }
 
-        fetchRecords(pagination.pageIndex, pagination.pageSize)
-
         window.addEventListener("resize", handleResize)
 
         return () => {
@@ -186,39 +191,56 @@ export const NoticeRecords = ({ noticeObjectId }) => {
         }
     }, [])
 
-    // Fetch records when filters change
-    useEffect(() => {
-        fetchRecords(1, pagination.pageSize)
-    }, [filters])
-
     // Fetch notification records
-    const fetchRecords = async (pageIndex, pageSize) => {
+    const fetchRecords = useCallback(async () => {
+        const request = ++requestSequence.current
+        activeRequest.current?.abort()
+        const controller = new AbortController()
+        activeRequest.current = controller
         try {
             setLoading(true)
+            setLoadError(false)
             const params = {
-                index: pageIndex,
-                size: pageSize,
+                index: pagination.pageIndex,
+                size: pagination.pageSize,
                 severity: filters.severity,
                 status: filters.status,
                 query: filters.query || undefined,
                 uuid: noticeObjectId,
             }
 
-            const res = await noticeRecordList(params)
+            const res = await noticeRecordList(params, controller.signal)
+            if (request !== requestSequence.current || controller.signal.aborted) return
+            if (res?.code !== 200) throw new Error('加载通知记录失败')
 
             setList(res?.data?.list || [])
-            setPagination({
-                pageIndex: res?.data?.index,
-                pageSize,
-                pageTotal: res?.data?.total,
-            })
+            setPagination(current => ({ ...current, pageTotal: res?.data?.total || 0 }))
         } catch (error) {
+            if (request !== requestSequence.current || controller.signal.aborted) return
+            setLoadError(true)
             console.error("Failed to load records:", error)
             message.error("加载通知记录失败，请稍后重试")
         } finally {
-            setLoading(false)
+            if (request === requestSequence.current) setLoading(false)
         }
-    }
+    }, [filters, noticeObjectId, pagination.pageIndex, pagination.pageSize])
+
+    // One owner for initial/filter/page reads; resize setup must not fetch again.
+    useEffect(() => {
+        const deferRead = filters.query !== previousQuery.current && typedQuery.current === filters.query && filters.query !== ''
+        previousQuery.current = filters.query
+        typedQuery.current = null
+        if (composing || deferRead) {
+            setLoading(true)
+            if (!composing) searchTimer.current = setTimeout(() => { searchTimer.current = null; fetchRecords() }, 300)
+        } else {
+            fetchRecords()
+        }
+        return () => {
+            clearTimeout(searchTimer.current); searchTimer.current = null
+            requestSequence.current++; activeRequest.current?.abort()
+        }
+    }, [fetchRecords, filters.query, composing])
 
     // Handle page change
     const handlePageChange = (page) => {
@@ -228,7 +250,6 @@ export const NoticeRecords = ({ noticeObjectId }) => {
             pageSize: page.pageSize,
         }
         setPagination(newPagination)
-        fetchRecords(page.current, page.pageSize)
     }
 
     // Show drawer with record details
@@ -239,15 +260,26 @@ export const NoticeRecords = ({ noticeObjectId }) => {
 
     // Handle filter changes
     const handleFilterChange = (key, value) => {
-        setFilters((prev) => ({
+        if (key === 'query') typedQuery.current = value
+        setFilters((prev) => prev[key] === value ? prev : ({
             ...prev,
             [key]: value,
         }))
+        setPagination(current => ({ ...current, pageIndex: 1 }))
     }
 
     // Handle refresh
     const handleRefresh = () => {
-        fetchRecords(pagination.pageIndex, pagination.pageSize)
+        if (composing) return
+        clearTimeout(searchTimer.current); searchTimer.current = null
+        fetchRecords()
+    }
+
+    const handleSearch = (value, event, info) => {
+        // Clearing already updates filters; Antd also emits onSearch for it.
+        if (composing || event?.nativeEvent?.isComposing || event?.nativeEvent?.keyCode === 229 || info?.source === 'clear' || value !== filters.query) return
+        if (pagination.pageIndex !== 1) setPagination(current => ({ ...current, pageIndex: 1 }))
+        else handleRefresh()
     }
 
     return (
@@ -295,7 +327,9 @@ export const NoticeRecords = ({ noticeObjectId }) => {
                     placeholder="输入搜索关键字"
                     value={filters.query}
                     onChange={(e) => handleFilterChange("query", e.target.value)}
-                    onSearch={() => fetchRecords(1, pagination.pageSize)}
+                    onSearch={handleSearch}
+                    onCompositionStart={() => setComposing(true)}
+                    onCompositionEnd={() => setComposing(false)}
                     style={{ width: 'min(100%, 300px)' }}
                     prefix={<SearchIcon size={14} />}
                 />
@@ -308,7 +342,7 @@ export const NoticeRecords = ({ noticeObjectId }) => {
             {/* Records Table */}
             <Table
                 columns={columns}
-                dataSource={list}
+                dataSource={loadError ? [] : list}
                 loading={loading}
                 scroll={{
                     y: height - 250,
@@ -317,7 +351,7 @@ export const NoticeRecords = ({ noticeObjectId }) => {
                 pagination={{
                     current: pagination.pageIndex,
                     pageSize: pagination.pageSize,
-                    total: pagination.pageTotal,
+                    total: loadError ? 0 : pagination.pageTotal,
                     showTotal: HandleShowTotal,
                     showSizeChanger: true,
                     pageSizeOptions: ["10"],
@@ -331,7 +365,7 @@ export const NoticeRecords = ({ noticeObjectId }) => {
                 }}
                 rowKey={(record) => record.id}
                 locale={{
-                    emptyText: <Empty description="暂无通知记录" image={Empty.PRESENTED_IMAGE_SIMPLE} />,
+                    emptyText: <Empty description={loadError ? '通知记录加载失败，请点击刷新重试' : '暂无通知记录'} image={Empty.PRESENTED_IMAGE_SIMPLE} />,
                 }}
             />
 

@@ -75,6 +75,10 @@ export const AlertStream = () => {
     const historySequence = useRef(0);
     const currentRequest = useRef(null);
     const historyRequest = useRef(null);
+    const searchTimer = useRef(null);
+    const typedQuery = useRef(null);
+    const previousQuery = useRef(query);
+    const [composing, setComposing] = useState(false);
     const activeCenterId = centerId === 'all' ? undefined : centerId;
 
     const loadCenters = useCallback(async () => {
@@ -137,8 +141,26 @@ export const AlertStream = () => {
     }, [eventParams,viewKey]);
 
     useEffect(() => { loadCenters().catch(() => message.error('加载故障中心失败')); }, [loadCenters]);
-    useEffect(() => { if (queue !== 'history') loadEvents(); return () => { requestSequence.current++; currentRequest.current?.abort(); }; }, [loadEvents, queue]);
-    useEffect(() => { if (queue === 'history') loadHistory(); return () => { historySequence.current++; historyRequest.current?.abort(); }; }, [loadHistory, queue]);
+    useEffect(() => {
+        // Keep URLs and input immediate; only defer reads caused by typing.
+        // Navigation, queue/filter changes and clearing still load immediately.
+        const deferRead = query !== previousQuery.current && typedQuery.current === query && query !== '';
+        previousQuery.current = query;
+        typedQuery.current = null;
+        const load = queue === 'history' ? loadHistory : loadEvents;
+        if (composing || deferRead) {
+            if (queue === 'history') setHistoryLoading(true); else setLoading(true);
+            setLoadError('');
+            if (!composing) searchTimer.current = setTimeout(() => { searchTimer.current = null; load(); }, 300);
+        } else {
+            load();
+        }
+        return () => {
+            clearTimeout(searchTimer.current); searchTimer.current = null;
+            requestSequence.current++; historySequence.current++;
+            currentRequest.current?.abort(); historyRequest.current?.abort();
+        };
+    }, [loadEvents, loadHistory, query, queue, composing]);
     const selectedKey = params.get('event');
     useEffect(() => { if(loadedKey !== viewKey) {setSelected(null);return;} const list = queue === 'history' ? historyEvents : events; setSelected(list.find(item => item.fingerprint === selectedKey) || null); }, [selectedKey,loadedKey,viewKey,events,historyEvents,queue]);
 
@@ -151,7 +173,11 @@ export const AlertStream = () => {
     const visibleEvents = useMemo(() => queue === 'history' ? historyEvents : events.filter(event => belongsToQueue(event, queue)), [events, historyEvents, queue]);
     const currentLoading = queue === 'history' ? historyLoading : loading;
 
-    const refresh = () => queue === 'history' ? loadHistory() : loadEvents();
+    const refresh = () => {
+        if (composing) return;
+        clearTimeout(searchTimer.current); searchTimer.current = null;
+        return queue === 'history' ? loadHistory() : loadEvents();
+    };
 
     const claimEvent = async () => {
         if (!selected || claiming) return;
@@ -191,7 +217,10 @@ export const AlertStream = () => {
                 {queueDefinitions.map(item => <button key={item.key} aria-pressed={queue === item.key} className={queue === item.key ? 'is-active' : ''} onClick={() => { changeView({queue:item.key}); setLoadError(''); }}><span>{item.label}</span>{counts[item.key] !== undefined && item.key !== 'history' ? <strong>{counts[item.key] || 0}</strong> : null}</button>)}
             </nav>
             <div className="alert-stream-toolbar">
-                <Input prefix={<Search size={15} />} allowClear aria-label="搜索告警" placeholder="搜索告警、规则或标签" value={query} onChange={event => { changeView({query:event.target.value}); }} onPressEnter={refresh} />
+                <Input prefix={<Search size={15} />} allowClear aria-label="搜索告警" placeholder="搜索告警、规则或标签" value={query}
+                    onChange={event => { typedQuery.current = event.target.value; changeView({query:event.target.value}); }}
+                    onCompositionStart={() => setComposing(true)} onCompositionEnd={() => setComposing(false)}
+                    onPressEnter={event => { if (!event.nativeEvent.isComposing && event.nativeEvent.keyCode !== 229) refresh(); }} />
                 <Select aria-label="故障中心" value={centerId} onChange={value => { changeView({center:value}); }} options={[{ label: '全部故障中心', value: 'all' }, ...centers.map(item => ({ label: item.name, value: item.id }))]} />
                 <Select aria-label="环境" showSearch optionFilterProp="label" disabled={queue === 'history'} value={queue === 'history' ? undefined : environment} allowClear onChange={value => { changeView({environment:value}); }} placeholder="全部环境" options={environmentOptions} />
                 <Select aria-label="服务" showSearch optionFilterProp="label" disabled={queue === 'history'} value={queue === 'history' ? undefined : service} allowClear onChange={value => { changeView({service:value}); }} placeholder="全部服务" options={serviceOptions} />

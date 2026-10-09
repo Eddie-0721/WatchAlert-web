@@ -24,7 +24,174 @@ async function mockAPI(page) {
   return requests;
 }
 
+test('notification records load once and batch text searches', async ({ page }) => {
+  await mockAPI(page);
+  const requests = [];
+  await page.route('**/noticeRecordList*', route => {
+    requests.push(new URL(route.request().url()).searchParams);
+    return route.fulfill({ json: { code: 200, data: { list: [], index: 1, total: 0 } } });
+  });
+  await page.clock.install();
+  await page.goto('/noticeRecords');
+  await expect(page.getByText('暂无通知记录')).toBeVisible();
+  await page.waitForLoadState('networkidle');
+  expect(requests).toHaveLength(1);
+  await page.clock.pauseAt(new Date(Date.now() + 1000));
+  const input = page.getByPlaceholder('输入搜索关键字');
+  await input.pressSequentially('payment');
+  expect(requests).toHaveLength(1);
+  await page.clock.runFor(300);
+  await expect.poll(() => requests.length).toBe(2);
+  expect(requests.at(-1).get('query')).toBe('payment');
+  await input.fill('database');
+  await input.press('Enter');
+  await expect.poll(() => requests.length).toBe(3);
+  expect(requests.at(-1).get('query')).toBe('database');
+  await page.clock.runFor(1000);
+  expect(requests).toHaveLength(3);
+  await page.locator('.ant-input-clear-icon').click();
+  await expect.poll(() => requests.length).toBe(4);
+  await page.clock.runFor(1000);
+  expect(requests).toHaveLength(4);
+  expect(requests.at(-1).has('query')).toBe(false);
+  await input.dispatchEvent('compositionstart', { data: '' });
+  await input.fill('sheng');
+  await page.clock.runFor(1000);
+  await input.dispatchEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 229, isComposing: true });
+  expect(requests).toHaveLength(4);
+  await input.fill('生产');
+  await input.dispatchEvent('compositionend', { data: '生产' });
+  await expect.poll(() => requests.length).toBe(5);
+  expect(requests.at(-1).get('query')).toBe('生产');
+});
+
+test('notification paging and filters issue one scoped read per action and recover from failure', async ({ page }) => {
+  await mockAPI(page);
+  await page.clock.install();
+  const requests = [];
+  let reject = false;
+  await page.route('**/noticeRecordList*', route => {
+    const params = new URL(route.request().url()).searchParams; requests.push(params);
+    const index = Number(params.get('index'));
+    return route.fulfill({ json: reject ? { code: 400, data: 'unavailable' } : { code: 200, data: { index, total: 30, list: [{ id: `record-${index}`, ruleName: `第 ${index} 页通知`, status: 0, createAt: 1700000000 }] } } });
+  });
+  await page.goto('/noticeRecords');
+  await expect(page.getByText('第 1 页通知', { exact: true })).toBeVisible();
+  await page.locator('.ant-pagination-item-2').click();
+  await expect(page.getByText('第 2 页通知', { exact: true })).toBeVisible();
+  expect(requests).toHaveLength(2);
+  await page.clock.pauseAt(new Date(Date.now() + 1000));
+  await page.getByPlaceholder('输入搜索关键字').fill('slow-query');
+  await page.locator('.ant-select').filter({ hasText: '告警等级' }).click();
+  await page.getByText('P0级告警', { exact: true }).click();
+  await expect(page.getByText('第 1 页通知', { exact: true })).toBeVisible();
+  await page.clock.runFor(1000);
+  await page.waitForLoadState('networkidle');
+  expect(requests).toHaveLength(3);
+  expect(requests.at(-1).get('severity')).toBe('P0');
+  expect(requests.at(-1).get('query')).toBe('slow-query');
+  expect(requests.at(-1).get('index')).toBe('1');
+  reject = true;
+  await page.getByRole('button', { name: /刷\s*新/, exact: true }).click();
+  await expect(page.getByText('加载通知记录失败，请稍后重试', { exact: true })).toBeVisible();
+  await expect(page.getByText('通知记录加载失败，请点击刷新重试', { exact: true })).toBeVisible();
+  await expect(page.getByText('暂无通知记录', { exact: true })).toHaveCount(0);
+  reject = false;
+  await page.getByRole('button', { name: /刷\s*新/, exact: true }).click();
+  await expect.poll(() => requests.length).toBe(5);
+  await expect(page.getByText('第 1 页通知', { exact: true })).toBeVisible();
+});
+
+test('notification object drawer makes one scoped request and ignores canceled late rows', async ({ page }) => {
+  await mockAPI(page);
+  await page.route('**/noticeList*', route => route.fulfill({ json: { code: 200, data: [{ uuid: 'notice-one', name: '通知对象一', dutyId: '' }] } }));
+  let release;
+  const pending = new Promise(resolve => { release = resolve; });
+  const requests = [];
+  await page.route('**/noticeRecordList*', async route => {
+    const params = new URL(route.request().url()).searchParams; requests.push(params);
+    if (!params.has('query')) await pending;
+    await route.fulfill({ json: { code: 200, data: { index: 1, total: 1, list: [{ id: 'row', ruleName: params.has('query') ? '新通知结果' : '旧通知不应显示', status: 0 }] } } }).catch(() => {});
+  });
+  try {
+    await page.goto('/noticeObjects');
+    await page.getByRole('button', { name: '通知对象一', exact: true }).click();
+    await expect.poll(() => requests.length).toBe(1);
+    const drawer = page.getByRole('dialog');
+    await drawer.getByPlaceholder('输入搜索关键字').fill('latest');
+    await drawer.getByPlaceholder('输入搜索关键字').press('Enter');
+    await expect(drawer.getByText('新通知结果', { exact: true })).toBeVisible();
+    release();
+    await page.waitForLoadState('networkidle');
+    expect(requests).toHaveLength(2);
+    expect(requests.every(params => params.get('uuid') === 'notice-one')).toBe(true);
+    await expect(page.getByText('旧通知不应显示', { exact: true })).toHaveCount(0);
+    await expect(page.locator('.ant-message-notice-error')).toHaveCount(0);
+  } finally { release(); await page.unrouteAll({ behavior: 'wait' }); }
+});
+
+test('IME composition and abandoned searches do not issue intermediate alert reads', async ({ page }) => {
+  const requests = await mockAPI(page);
+  const reads = () => requests.filter(url => /\/event\/(curEvent|hisEvent)$/.test(url.pathname));
+  await page.clock.install();
+  await page.goto('/alerts');
+  await expect.poll(() => reads().length).toBe(1);
+  await page.clock.pauseAt(new Date(Date.now() + 1000));
+  const input = page.getByRole('textbox', { name: '搜索告警' });
+  await input.dispatchEvent('compositionstart', { data: '' });
+  await input.fill('sheng');
+  await page.clock.runFor(1000);
+  await input.dispatchEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 229, isComposing: true });
+  expect(reads()).toHaveLength(1);
+  await input.fill('生产');
+  await input.dispatchEvent('compositionend', { data: '生产' });
+  await expect.poll(() => reads().length).toBe(2);
+  expect(reads().at(-1).searchParams.get('query')).toBe('生产');
+  await input.fill('pending');
+  await page.getByRole('button', { name: '历史事件', exact: true }).click();
+  await expect.poll(() => reads().length).toBe(3);
+  expect(reads().at(-1).pathname).toMatch(/hisEvent$/);
+  expect(reads().at(-1).searchParams.get('query')).toBe('pending');
+  await page.clock.runFor(1000);
+  expect(reads()).toHaveLength(3);
+  await input.fill('must-not-run');
+  await page.getByRole('button', { name: '在 Copilot 中分析', exact: true }).click();
+  await expect(page).toHaveURL(/\/copilot/);
+  await page.clock.runFor(1000);
+  expect(reads()).toHaveLength(3);
+});
+
 for (const history of [false, true]) {
+  test(`typing batches ${history ? 'history' : 'current'} searches but enter and clear stay immediate`, async ({ page }) => {
+    const requests = await mockAPI(page);
+    const suffix = history ? '/hisEvent' : '/curEvent';
+    const reads = () => requests.filter(url => url.pathname.endsWith(suffix));
+    await page.clock.install();
+    await page.goto(history ? '/alerts?queue=history' : '/alerts');
+    await expect.poll(() => reads().length).toBe(1);
+    await expect(page.getByText(history ? '当前筛选条件下没有历史事件' : '当前队列没有需要展示的告警')).toBeVisible();
+    await page.clock.pauseAt(new Date(Date.now() + 1000));
+    const input = page.getByRole('textbox', { name: '搜索告警' });
+    await input.pressSequentially('payment');
+    expect(reads().length).toBe(1);
+    await page.clock.runFor(299);
+    expect(reads().length).toBe(1);
+    await page.clock.runFor(1);
+    await expect.poll(() => reads().length).toBe(2);
+    expect(reads().at(-1).searchParams.get('query')).toBe('payment');
+    await input.fill('database');
+    await input.press('Enter');
+    await expect.poll(() => reads().length).toBe(3);
+    expect(reads().at(-1).searchParams.get('query')).toBe('database');
+    await page.clock.runFor(1000);
+    expect(reads().length).toBe(3);
+    await page.locator('.alert-stream-page .ant-input-clear-icon').click();
+    await expect.poll(() => reads().length).toBe(4);
+    expect(reads().at(-1).searchParams.has('query')).toBe(false);
+    await page.clock.runFor(1000);
+    expect(reads().length).toBe(4);
+  });
+
   test(`new ${history ? 'history' : 'current'} result survives a canceled late response and refresh`, async ({ page }) => {
     await mockAPI(page);
     let release;

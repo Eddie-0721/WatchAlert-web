@@ -54,11 +54,12 @@ async function deleteNotice(params) {
     }
 }
 
-async function noticeRecordList(params) {
+async function noticeRecordList(params, signal) {
     try {
-        const res = await http('get', '/api/w8t/notice/noticeRecordList',params);
+        const res = await http('get', '/api/w8t/notice/noticeRecordList', params, { signal });
         return res;
     } catch (error) {
+        if (signal?.aborted) throw error;
         HandleApiError(error)
         return error
     }
