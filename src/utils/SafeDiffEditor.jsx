@@ -1,31 +1,31 @@
-import React, { useRef, useEffect } from 'react'
+import React, { useRef, useLayoutEffect } from 'react'
 import { DiffEditor } from '@monaco-editor/react'
 import '../monacoSetup';
 import { Spin } from 'antd'
+import { detachDiffModels } from './detachDiffModels'
 
 /**
  * 封装 Monaco DiffEditor，解决卸载时
  * "TextModel got disposed before DiffEditorWidget model got reset" 问题：
- * 手动在 DiffEditor unmount 前先将 originalModel/modifiedModel 置为 null，
- * 再让内部清理逻辑安全执行。
+ * 在包装库的 passive cleanup 前解除关联并释放本组件拥有的模型，
+ * 再让包装库处置编辑器。显式保留的外部模型不释放。
  */
 const SafeDiffEditor = (props) => {
     const editorRef = useRef(null)
+    const ownershipRef = useRef(props)
+    ownershipRef.current = props
 
     const handleMount = (editor) => {
         editorRef.current = editor
     }
 
-    // 组件卸载前：先清空 DiffEditor 的 model，避免 TextModel 被提前 dispose
-    useEffect(() => {
+    // setModel(null) is the detach API; { original: null, modified: null }
+    // is an invalid model. Save the model pair first so detaching cannot leak it.
+    useLayoutEffect(() => {
         return () => {
-            if (editorRef.current && !editorRef.current.isDisposed?.()) {
-                try {
-                    editorRef.current.setModel({ original: null, modified: null })
-                } catch (_) {
-                    // ignore
-                }
-            }
+            const editor = editorRef.current
+            editorRef.current = null
+            detachDiffModels(editor, ownershipRef.current)
         }
     }, [])
 

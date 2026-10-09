@@ -5,6 +5,7 @@ FROM ${NODE_IMAGE} AS build
 ARG NPM_REGISTRY=https://registry.npmmirror.com
 WORKDIR /app
 COPY package.json package-lock.json .npmrc ./
+COPY scripts/patch-monaco-word-highlighter.mjs ./scripts/
 RUN npm ci --registry=${NPM_REGISTRY} --no-audit
 COPY . .
 RUN npm run build

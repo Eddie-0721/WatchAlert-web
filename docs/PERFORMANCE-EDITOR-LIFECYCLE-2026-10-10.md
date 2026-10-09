@@ -2,6 +2,8 @@
 
 日期：2026-10-10。前端基线 `e56a7c0`。仅前端运行代码调整，不修改接口、规则提交、权限或数据格式。
 
+后续状态：本文件保留第三十五批的历史验证记录。下述取消异常已在第三十六批处理，当前结果以 [取消与 Diff 释放修复记录](PERFORMANCE-EDITOR-CANCELLATION-2026-10-10.md) 为准。
+
 ## 已确认的问题与处理
 
 1. `sqlEditor.jsx` 每次挂载都向 Monaco 全局注册 SQL 补全，未释放注册对象。对照原实现，在规则创建页 ClickHouse → Prometheus → ClickHouse 后，同一个 SELECT 候选出现两次。现在持有并释放补全注册、内容监听和延迟任务；连续输入只保留一个 100 ms 延迟补全任务，卸载后不再触发它。连续三次打开均只显示一条 SELECT。
@@ -32,22 +34,20 @@
 - 保持最终构建不变，全站浏览器回归 319 项通过、3 项跳过。跳过的是两项按需容量测量及下述已知取消异常复现，不能称为 322 项全部通过。接口均为本地模拟，不代表生产联调。
 - 独立 Agent 本次复查 25 项现有单元测试及 Python 编译检查通过；没有修改 Agent，也没有调用真实模型。
 
-## 未完成：Monaco 快速卸载取消异常
+## 上一批遗留：Monaco 快速卸载取消异常
 
 在聚焦 JSON 编辑器、打开查找后立即切换导入语言，可触发浏览器 `Canceled` 未处理异常。堆栈和依赖源码指向 Monaco 0.52.2 的 `WordHighlighter`：忽略了 `Delayer.trigger()` 返回的 Promise，卸载时 `Delayer.dispose()` 使它拒绝。
 
 恢复原 Monaco 根入口、保留小写 JSON 语言 ID 时也复现了该异常，因此不是语言入口收缩所独有；但这不是原始 HEAD 所有文件不变的对照，不能宣称它对原来大小写错误的 JSON 导入模式完全无影响。正常语法检查/格式化/Diff 测试通过，不等于快速切换异常已经修复。
 
-没有在生产代码里吞掉全局异常，没有移除词语高亮，也没有修改 node_modules 或升级依赖。独立复现用例保留在 `performance.spec.mjs`，默认跳过，手动启用后当前确实失败：
+第三十五批没有在生产代码里吞掉全局异常，没有移除词语高亮，也没有修改 node_modules 或升级依赖。当时独立复现用例默认跳过，手动启用会失败。第三十六批加入受校验的局部补丁后，用例已恢复为默认运行，当前执行方式为：
 
 ```powershell
 $env:PLAYWRIGHT_CHROMIUM_EXECUTABLE = 'C:\Program Files\Google\Chrome\Application\chrome.exe'
-$env:WATCHALERT_EDITOR_CANCELLATION_REPRO = '1'
-npx playwright test tests/ui/performance.spec.mjs --grep 'known Monaco cancellation'
-Remove-Item Env:WATCHALERT_EDITOR_CANCELLATION_REPRO
+npx playwright test tests/ui/performance.spec.mjs --grep 'rapid language switch'
 ```
 
-下一步应单独验证依赖修复或安全的编辑器切换方式，覆盖焦点、撤销、JSON/YAML 内容隔离、卸载和 Diff，不能通过隐藏错误或延长测试等待宣称修复。这是明确的未完成项。
+第三十六批的修复保留原有编辑行为，不用全局隐藏错误或延长卸载等待来规避异常。最终覆盖范围及尚未验证的项目见后续修复记录，不把本文件中的历史失败计数当作当前结果。
 
 ## 发布和整体剩余项
 

@@ -19,6 +19,8 @@ npm run test:ui
 
 `.npmrc` 默认使用国内 npmmirror；legacy-peer-deps 用于兼容遗留 React 组件的 peer 声明，不表示这些组件已全部现代化。生产依赖由 npm ci 固定，不在 Docker 构建时重新解析版本。
 
+Monaco 0.52.2 的高亮取消修复由安装/启动/构建钩子自动应用并校验，不需要手工修改 node_modules。升级 Monaco 前需复查并移除或更新该版本补丁；具体范围与验收见 [编辑器取消修复记录](docs/PERFORMANCE-EDITOR-CANCELLATION-2026-10-10.md)。
+
 ## Docker 构建
 
 ```bash

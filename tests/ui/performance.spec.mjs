@@ -633,23 +633,29 @@ test('scoped editor languages retain JSON validation, formatting, find and YAML 
   expect(errors).toEqual([]);
 });
 
-test('known Monaco cancellation on immediate focused JSON editor disposal', async ({ page }) => {
-  // Opt-in reproducer, not a passing acceptance check: Monaco 0.52.2's
-  // WordHighlighter discards Delayer.trigger()'s rejecting cancellation promise.
-  // Reproduced with both the original package entry and our scoped entry.
-  test.skip(process.env.WATCHALERT_EDITOR_CANCELLATION_REPRO !== '1', 'Known upstream cancellation issue; see PERFORMANCE-EDITOR-LIFECYCLE-2026-10-10.md');
+test('rapid language switch handles pending editor cancellation', async ({ page }) => {
   await mockAPI(page);
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   await page.goto('/ruleGroup/g/rule/list');
   await page.getByRole('button', { name: /导\s*入/, exact: true }).click();
   const input = page.locator('.monaco-editor textarea.inputarea').first();
-  await input.press('ControlOrMeta+A');
-  await page.keyboard.insertText('{"environment":"prod"}');
-  await input.press('ControlOrMeta+f');
-  await input.press('Escape');
-  await page.getByText('Prometheus Rule YAML', { exact: true }).click();
-  await expect(page.locator('.monaco-editor .view-lines').first()).toContainText('Exporter');
+  await expect(input).toBeAttached();
+  // Exercise real rapid focus/model disposal repeatedly. Unit tests separately
+  // cover a deterministic cancellation before the scheduled task can execute.
+  for (let round = 0; round < 3; round++) {
+    await page.getByText('WatchAlert JSON', { exact: true }).click();
+    await input.press('ControlOrMeta+A');
+    await page.keyboard.insertText('{"environment":"prod"}');
+    await input.press('ControlOrMeta+f');
+    await input.press('Escape');
+    await page.getByText('Prometheus Rule YAML', { exact: true }).click();
+    await expect(page.locator('.monaco-editor .view-lines').first()).toContainText('Exporter');
+  }
+  await page.getByRole('button', { name: 'Close', exact: true }).click();
+  await page.locator('.wa-sider').getByRole('button', { name: '告警', exact: true }).click();
+  await expect(page).toHaveURL(/\/alerts$/);
+  await expect(page.locator('.monaco-editor')).toHaveCount(0);
   expect(errors).toEqual([]);
 });
 
@@ -678,6 +684,15 @@ test('local editor core retains JSON version diff', async ({ page }) => {
   await expect(diff.locator('.char-insert, .line-insert, .char-delete, .line-delete').first()).toBeVisible();
   await page.getByRole('button', { name: 'Close', exact: true }).click();
   await expect(diff).toBeHidden();
+  await page.getByRole('button', { name: '更多操作：target' }).click();
+  await page.getByText('历史版本', { exact: true }).click();
+  await expect(diff.locator('.view-lines').first()).toContainText('old:9090');
+  await expect(diff.locator('.view-lines').last()).toContainText('new:9090');
+  await diff.locator('textarea.inputarea').last().press('ControlOrMeta+f');
+  await page.getByRole('button', { name: 'Close', exact: true }).click();
+  await page.locator('.wa-sider').getByRole('button', { name: '告警', exact: true }).click();
+  await expect(page).toHaveURL(/\/alerts$/);
+  await expect(diff).toHaveCount(0);
   expect(errors).toEqual([]);
 });
 
@@ -699,6 +714,11 @@ test('SQL editor completion providers are released across repeated mounts', asyn
     await page.getByText('Prometheus', { exact: true }).click();
     await expect(page.locator('.monaco-editor')).toHaveCount(0);
   }
+  await page.getByText('ClickHouse', { exact: true }).click();
+  await page.locator('.monaco-editor textarea.inputarea').first().pressSequentially('SEL');
+  await page.locator('.wa-sider').getByRole('button', { name: '告警', exact: true }).click();
+  await expect(page).toHaveURL(/\/alerts$/);
+  await expect(page.locator('.monaco-editor')).toHaveCount(0);
   await page.waitForTimeout(150);
   expect(errors).toEqual([]);
 });
