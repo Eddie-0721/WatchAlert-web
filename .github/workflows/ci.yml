@@ -15,5 +15,8 @@ jobs:
       - run: npm ci --no-audit
       - run: npm test
       - run: npm run build
+      - name: Install Nginx for isolated delivery checks
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends nginx
+      - run: npm run test:nginx
       - run: npx playwright install --with-deps chromium
       - run: npm run test:ui
