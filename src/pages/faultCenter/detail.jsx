@@ -29,7 +29,7 @@ export const FaultCenterDetail = () => {
     return searchParams.get("tab") || "1"
   }
 
-  const [activeTabKey, setActiveTabKey] = useState(getInitialTabKey)
+  const activeTabKey = getInitialTabKey()
   const [sloChartData, setSloChartData] = useState([]) // [{date, mttr, mtta, mtbf}, ...]
 
   // 计算数组中某个 key 的平均值（基于 sloChartData 列表）
@@ -50,15 +50,6 @@ export const FaultCenterDetail = () => {
     handleList()
     handleGetSlo()
   }, [])
-
-  // 当 URL 的查询参数变化时更新 activeTabKey
-  useEffect(() => {
-    const searchParams = new URLSearchParams(location.search)
-    const tabFromUrl = searchParams.get("tab")
-    if (tabFromUrl) {
-      setActiveTabKey(tabFromUrl)
-    }
-  }, [location.search])
 
   const handleList = async () => {
     try {
@@ -137,12 +128,12 @@ const handleGetSlo = async () => {
     {
       key: "1",
       label: "活跃告警",
-      children: <AlertCurrentEvent id={id} />,
+      children: <AlertCurrentEvent id={id} active={activeTabKey === '1'} />,
     },
     {
       key: "2",
       label: "历史告警",
-      children: <AlertHistoryEvent id={id} />,
+      children: <AlertHistoryEvent id={id} active={activeTabKey === '2'} />,
     },
     {
       key: "3",
@@ -238,7 +229,6 @@ const handleGetSlo = async () => {
 
   // Tab 切换回调函数
   const onTabChange = (key) => {
-    setActiveTabKey(key)
     const searchParams = new URLSearchParams(location.search)
     searchParams.set("tab", key)
     navigate(`${location.pathname}?${searchParams.toString()}`, { replace: true })

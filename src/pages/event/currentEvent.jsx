@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useRef } from "react"
+import React, { useCallback, useRef } from "react"
 import { useState, useEffect } from "react"
 import {
     Table,
@@ -71,12 +71,12 @@ import { NotificationTypeIcon } from "../notice/notification-type-icon"
 const { Text } = Typography
 
 export const AlertCurrentEvent = (props) => {
-    const { id } = props
+    const { id, active = true } = props
     const navigate = useNavigate();
     const location = useLocation();
     const { Search } = Input
     const [currentEventList, setCurrentEventList] = useState([])
-    const [searchQuery, setSearchQuery] = useState("")
+    const searchQuery = new URLSearchParams(location.search).get('query') || ''
     const [selectedDataSource, setSelectedDataSource] = useState("")
     const [selectedAlertLevel, setSelectedAlertLevel] = useState("")
     const [drawerOpen, setDrawerOpen] = useState(false)
@@ -87,13 +87,19 @@ export const AlertCurrentEvent = (props) => {
         pageTotal: 0,
     })
     const [loading, setLoading] = useState(true)
+    const [durationNow, setDurationNow] = useState(() => Math.floor(Date.now() / 1000))
     const [aiAnalyze, setAiAnalyze] = useState(false)
     const [aiAnalyzeContent, setAiAnalyzeContent] = useState({})
     const [analyzeLoading, setAnalyzeLoading] = useState(false)
     const [selectedRowKeys, setSelectedRowKeys] = useState([])
     const [batchProcessing, setBatchProcessing] = useState(false)
-    // 添加一个状态来跟踪是否正在进行过滤操作
-    const [isFiltering, setIsFiltering] = useState(false)
+    const [loadError, setLoadError] = useState(false)
+    const requestSequence = useRef(0)
+    const activeRequest = useRef(null)
+    const searchTimer = useRef(null)
+    const typedQuery = useRef(null)
+    const previousQuery = useRef(searchQuery)
+    const [composing, setComposing] = useState(false)
     const [selectedSilenceRow, setSelectedSilenceRow] = useState(null)
     const [silenceVisible, setSilenceVisible] = useState(false)
     // 导出相关状态
@@ -262,8 +268,8 @@ export const AlertCurrentEvent = (props) => {
             width: "160px",
             sorter: true,
             render: (startTime) => {
-                const durationText = FormatDuration(startTime)
-                const gradientStyle = GetDurationGradient(startTime)
+                const durationText = FormatDuration(startTime, durationNow)
+                const gradientStyle = GetDurationGradient(startTime, durationNow)
                 const totalBlocks = 10
 
                 return (
@@ -408,21 +414,6 @@ export const AlertCurrentEvent = (props) => {
         }
     }, [])
 
-    useEffect(() => {
-        // 当过滤条件改变时，重置到第一页并获取数据
-        if (isFiltering) {
-            setCurrentPagination((prev) => ({
-                ...prev,
-                pageIndex: 1, // 重置到第一页
-            }))
-            handleCurrentEventList(1, currentPagination.pageSize)
-            setIsFiltering(false) // 重置过滤状态
-        } else {
-            // 正常分页或初始加载
-            handleCurrentEventList(currentPagination.pageIndex, currentPagination.pageSize)
-        }
-    }, [searchQuery, id, isFiltering, currentPagination.pageIndex, currentPagination.pageSize, sortOrder])
-
     const handleSilenceModalOpen = (record) => {
         setSelectedSilenceRow(buildSilenceContext(record, { faultCenterId: id }));
         setSilenceVisible(true);
@@ -441,9 +432,17 @@ export const AlertCurrentEvent = (props) => {
         setDrawerOpen(false)
     }
 
-    const handleCurrentEventList = async (pageIndex, pageSize) => {
+    const loadCurrentEvents = useCallback(async () => {
+        if (!active) return
+        clearTimeout(searchTimer.current)
+        activeRequest.current?.abort()
+        const controller = new AbortController()
+        activeRequest.current = controller
+        const sequence = ++requestSequence.current
+        const { pageIndex, pageSize } = currentPagination
         try {
             setLoading(true)
+            setLoadError(false)
             const params = {
                 faultCenterId: id,
                 index: pageIndex,
@@ -454,16 +453,17 @@ export const AlertCurrentEvent = (props) => {
                 severity: selectedAlertLevel || undefined,
                 sortOrder: sortOrder || undefined,
             }
-            const res = await getCurEventList(params)
+            const res = await getCurEventList(params, controller.signal)
+            if (controller.signal.aborted || sequence !== requestSequence.current) return
+            if (res?.code !== 200) throw new Error('告警事件加载失败，请点击刷新重试')
             if (res?.data?.list) {
                 setCurrentEventList(res?.data?.list)
 
                 // 更新分页信息
-                setCurrentPagination({
-                    ...currentPagination,
-                    pageIndex: res?.data?.index,
+                setCurrentPagination(prev => ({
+                    ...prev,
                     pageTotal: res?.data?.total,
-                })
+                }))
 
                 // 检查是否有数据但当前页为空
                 if (res?.data?.total > 0 && res?.data?.list?.length === 0 && pageIndex > 1) {
@@ -472,34 +472,63 @@ export const AlertCurrentEvent = (props) => {
                         ...prev,
                         pageIndex: 1,
                     }))
-                    handleCurrentEventList(1, pageSize)
                 }
             }
         } catch (error) {
+            if (controller.signal.aborted || sequence !== requestSequence.current) return
+            setLoadError(true)
             HandleApiError(error)
         } finally {
-            setLoading(false)
+            if (!controller.signal.aborted && sequence === requestSequence.current) setLoading(false)
         }
-    }
+    }, [active, id, currentPagination.pageIndex, currentPagination.pageSize, searchQuery, selectedStatus, selectedDataSource, selectedAlertLevel, sortOrder])
+
+    // Modal callbacks can finish after the user changes filters: refresh the latest view.
+    const latestRead = useRef(loadCurrentEvents)
+    useEffect(() => {
+        latestRead.current = loadCurrentEvents
+        return () => { latestRead.current = () => {} }
+    }, [loadCurrentEvents])
+    const handleCurrentEventList = () => latestRead.current()
+
+    useEffect(() => {
+        const deferRead = searchQuery !== previousQuery.current && typedQuery.current === searchQuery && searchQuery !== ''
+        previousQuery.current = searchQuery
+        typedQuery.current = null
+        if (active) {
+            if (composing || deferRead) {
+                setLoading(true)
+                setLoadError(false)
+                if (!composing) searchTimer.current = setTimeout(loadCurrentEvents, 300)
+            } else loadCurrentEvents()
+        }
+        return () => {
+            clearTimeout(searchTimer.current)
+            requestSequence.current += 1
+            activeRequest.current?.abort()
+        }
+    }, [loadCurrentEvents, searchQuery, composing, active])
 
     const handleDataSourceChange = (value) => {
         setSelectedDataSource(value)
-        setIsFiltering(true) // 标记正在过滤
+        setCurrentPagination(prev => ({ ...prev, pageIndex: 1 }))
     }
 
     const handleSeverityChange = (value) => {
         setSelectedAlertLevel(value)
-        setIsFiltering(true) // 标记正在过滤
+        setCurrentPagination(prev => ({ ...prev, pageIndex: 1 }))
     }
 
-    const handleSearch = (value) => {
-        setSearchQuery(value)
-        setIsFiltering(true) // 标记正在过滤
+    const handleSearch = (value, event, info) => {
+        if (info?.source === 'clear' || composing || event?.nativeEvent?.isComposing || event?.keyCode === 229 || value !== searchQuery) return
+        clearTimeout(searchTimer.current)
+        if (currentPagination.pageIndex !== 1) setCurrentPagination(prev => ({ ...prev, pageIndex: 1 }))
+        else handleCurrentEventList()
     }
 
     const handleStatusChange = (value) => {
         setSelectedStatus(value)
-        setIsFiltering(true) // 标记正在过滤
+        setCurrentPagination(prev => ({ ...prev, pageIndex: 1 }))
     }
 
     const handleCurrentPageChange = (page,_,sort) => {
@@ -508,7 +537,7 @@ export const AlertCurrentEvent = (props) => {
     }
 
     const handleRefresh = () => {
-        handleCurrentEventList(currentPagination.pageIndex, currentPagination.pageSize)
+        handleCurrentEventList()
     }
 
     const handleCloseAiAnalyze = () => {
@@ -628,18 +657,14 @@ export const AlertCurrentEvent = (props) => {
         AiDeepAnalyze(aiAnalyzeContent)
     }
 
-    const [percent, setPercent] = useState(-50)
-    const timerRef = useRef(null)
-
+    // Duration text has one-second precision; empty/hidden/error views need no clock.
     useEffect(() => {
-        timerRef.current = setTimeout(() => {
-            setPercent((v) => {
-                const nextPercent = v + 5
-                return nextPercent > 150 ? -50 : nextPercent
-            })
-        }, 100)
-        return () => clearTimeout(timerRef.current)
-    }, [percent])
+        if (!active || loadError || currentEventList.length === 0) return
+        const update = () => setDurationNow(Math.floor(Date.now() / 1000))
+        update()
+        const timer = setInterval(update, 1000)
+        return () => clearInterval(timer)
+    }, [active, loadError, currentEventList.length])
 
     // 批量操作菜单
     const batchOperationMenu = {
@@ -679,7 +704,7 @@ export const AlertCurrentEvent = (props) => {
                     await ProcessAlertEvent(params)
                     message.success(`成功认领 ${selectedRowKeys.length} 个事件`)
                     setSelectedRowKeys([]) // 清空选择
-                    handleCurrentEventList(currentPagination.pageIndex, currentPagination.pageSize) // 刷新列表
+                    handleCurrentEventList() // 刷新列表
                 } catch (error) {
                     message.error("认领失败: " + error.message)
                 } finally {
@@ -712,7 +737,7 @@ export const AlertCurrentEvent = (props) => {
                     await DeleteAlertEvent(params)
                     message.success(`成功删除 ${selectedRowKeys.length} 个事件`)
                     setSelectedRowKeys([]) // 清空选择
-                    handleCurrentEventList(currentPagination.pageIndex, currentPagination.pageSize) // 刷新列表
+                    handleCurrentEventList() // 刷新列表
                 } catch (error) {
                     message.error("删除失败: " + error.message)
                 } finally {
@@ -740,7 +765,7 @@ export const AlertCurrentEvent = (props) => {
                     }
                     await ProcessAlertEvent(params)
                     message.success("认领成功")
-                    handleCurrentEventList(currentPagination.pageIndex, currentPagination.pageSize)
+                    handleCurrentEventList()
                 } catch (error) {
                     message.error("认领失败: " + error.message)
                 } finally {
@@ -764,7 +789,7 @@ export const AlertCurrentEvent = (props) => {
                     }
                     await DeleteAlertEvent(params)
                     message.success("删除成功")
-                    handleCurrentEventList(currentPagination.pageIndex, currentPagination.pageSize)
+                    handleCurrentEventList()
                 } catch (error) {
                     message.error("删除失败: " + error.message)
                 } finally {
@@ -776,22 +801,15 @@ export const AlertCurrentEvent = (props) => {
 
     // 清除所有过滤条件
     const clearAllFilters = () => {
-        setSearchQuery("")
+        onSearchChange("")
         setSelectedDataSource("")
         setSelectedAlertLevel("")
-        setIsFiltering(true) // 标记正在过滤
+        setCurrentPagination(prev => ({ ...prev, pageIndex: 1 }))
     }
 
-    useEffect(() => {
-        const searchParams = new URLSearchParams(location.search);
-        const query = searchParams.get('query');
-        if (query) {
-            setSearchQuery(query);
-        }
-    }, [location.search]);
-
     const onSearchChange = (key) => {
-        setSearchQuery(key);
+        typedQuery.current = key;
+        setCurrentPagination(prev => ({ ...prev, pageIndex: 1 }));
         const searchParams = new URLSearchParams(location.search);
         searchParams.set('query', key);
         navigate(`${location.pathname}?${searchParams.toString()}`, { replace: true });
@@ -1175,6 +1193,8 @@ export const AlertCurrentEvent = (props) => {
                             style={{ width: 200 }}
                             value={searchQuery}
                             onChange={(e) => onSearchChange(e.target.value)}
+                            onCompositionStart={() => setComposing(true)}
+                            onCompositionEnd={() => setComposing(false)}
                             prefix={<SearchOutlined />}
                         />
                         <Select
@@ -1244,7 +1264,7 @@ export const AlertCurrentEvent = (props) => {
 
             <Table
                 columns={columns}
-                dataSource={currentEventList}
+                dataSource={loadError ? [] : currentEventList}
                 loading={loading}
                 rowSelection={rowSelection}
                 pagination={{
@@ -1267,7 +1287,7 @@ export const AlertCurrentEvent = (props) => {
                     x: "max-content", // 水平滚动
                 }}
                 locale={{
-                    emptyText: <Empty description="暂无告警事件" image={Empty.PRESENTED_IMAGE_SIMPLE} />,
+                    emptyText: <Empty description={loadError ? '告警事件加载失败，请点击刷新重试' : '暂无告警事件'} image={Empty.PRESENTED_IMAGE_SIMPLE} />,
                 }}
                 rowClassName={(record) => `severity-row-${record.severity}`}
             />
@@ -1288,7 +1308,7 @@ export const AlertCurrentEvent = (props) => {
 
             <CreateSilenceModal visible={silenceVisible} onClose={handleSilenceModalClose} type="create"
                                 silenceContext={selectedSilenceRow} faultCenterId={id}
-                                handleList={() => handleCurrentEventList(currentPagination.pageIndex, currentPagination.pageSize)}/>
+                                handleList={handleCurrentEventList}/>
 
             <Drawer
                 title="事件详情"

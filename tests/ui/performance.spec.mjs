@@ -1,5 +1,221 @@
 import { test, expect } from '@playwright/test';
 
+function faultEventRow(name, id = name) {
+  return { id, fingerprint: id, rule_name: name, annotations: '测试事件', datasource_type: 'Prometheus', severity: 'P0', status: 'alerting', first_trigger_time: 1700000000, recover_time: 1700000100, confirmState: {}, labels: {} };
+}
+
+for (const history of [false, true]) {
+  const kind = history ? 'history' : 'current';
+  const endpoint = history ? 'hisEvent' : 'curEvent';
+  const path = `/faultCenter/detail/fc?tab=${history ? '2' : '1'}`;
+
+  test(`fault ${kind} coalesces typing, enters, clears and filters without duplicate reads`, async ({ page }) => {
+    await mockAPI(page);
+    const requests = [];
+    await page.route(`**/event/${endpoint}*`, route => {
+      const params = new URL(route.request().url()).searchParams; requests.push(params);
+      return route.fulfill({ json: { code: 200, data: { index: Number(params.get('index')), total: 30, list: [faultEventRow(`页-${params.get('index')}`)] } } });
+    });
+    await page.clock.install();
+    await page.goto(path);
+    await expect(page.getByText('页-1', { exact: true })).toBeVisible();
+    await page.waitForLoadState('networkidle');
+    expect(requests).toHaveLength(1);
+    await page.locator('.ant-pagination-item-2').click();
+    await expect(page.getByText('页-2', { exact: true })).toBeVisible();
+    expect(requests).toHaveLength(2);
+    await page.clock.pauseAt(new Date(Date.now() + 1000));
+    const input = page.getByPlaceholder('输入搜索关键字');
+    await input.pressSequentially('payment');
+    expect(requests).toHaveLength(2);
+    await page.clock.runFor(299);
+    expect(requests).toHaveLength(2);
+    await page.clock.runFor(1);
+    await expect.poll(() => requests.length).toBe(3);
+    expect(requests.at(-1).get('query')).toBe('payment');
+    expect(requests.at(-1).get('index')).toBe('1');
+    await input.fill('pending');
+    await page.locator('.ant-select').filter({ hasText: '告警等级' }).click();
+    await page.getByText('P0级告警', { exact: true }).click();
+    await expect.poll(() => requests.length).toBe(4);
+    await page.clock.runFor(1000);
+    expect(requests).toHaveLength(4);
+    expect(requests.at(-1).get('query')).toBe('pending');
+    expect(requests.at(-1).get('severity')).toBe('P0');
+    await input.fill('enter-now');
+    await input.press('Enter');
+    await expect.poll(() => requests.length).toBe(5);
+    await page.clock.runFor(1000);
+    expect(requests).toHaveLength(5);
+    await page.locator('.ant-input-clear-icon').click();
+    await expect.poll(() => requests.length).toBe(6);
+    await page.clock.runFor(1000);
+    expect(requests).toHaveLength(6);
+    expect(requests.at(-1).has('query')).toBe(false);
+    await input.dispatchEvent('compositionstart', { data: '' });
+    await input.fill('sheng');
+    await page.clock.runFor(1000);
+    await input.dispatchEvent('keydown', { key: 'Enter', keyCode: 229, isComposing: true });
+    expect(requests).toHaveLength(6);
+    await input.fill('生产');
+    await input.dispatchEvent('compositionend', { data: '生产' });
+    await expect.poll(() => requests.length).toBe(7);
+    expect(requests.at(-1).get('query')).toBe('生产');
+    expect(requests.every(params => params.get('faultCenterId') === 'fc')).toBe(true);
+  });
+
+  test(`fault ${kind} initial URL reads once, ignores late responses and retries failures`, async ({ page }) => {
+    await mockAPI(page);
+    let release;
+    const pending = new Promise(resolve => { release = resolve; });
+    const requests = [];
+    let fail = false;
+    await page.route(`**/event/${endpoint}*`, async route => {
+      const params = new URL(route.request().url()).searchParams; requests.push(params);
+      const old = params.get('query') === 'initial';
+      if (old) await pending;
+      await route.fulfill({ json: fail ? { code: 400, data: 'unavailable' } : { code: 200, data: { total: 1, list: [faultEventRow(old ? '旧事件不可覆盖' : '最新事件')] } } }).catch(() => {});
+    });
+    try {
+      await page.goto(`${path}&query=initial`);
+      await expect.poll(() => requests.length).toBe(1);
+      expect(requests[0].get('query')).toBe('initial');
+      const input = page.getByPlaceholder('输入搜索关键字');
+      await input.fill('latest'); await input.press('Enter');
+      await expect(page.getByText('最新事件', { exact: true })).toBeVisible();
+      release();
+      await page.waitForLoadState('networkidle');
+      expect(requests).toHaveLength(2);
+      await expect(page.getByText('旧事件不可覆盖', { exact: true })).toHaveCount(0);
+      await expect(page.locator('.ant-message-notice-error')).toHaveCount(0);
+      fail = true;
+      await page.getByRole('button', { name: /刷\s*新/, exact: true }).click();
+      await expect(page.getByText(history ? '历史告警加载失败，请点击刷新重试' : '告警事件加载失败，请点击刷新重试', { exact: true })).toBeVisible();
+      fail = false;
+      await input.press('Enter');
+      await expect(page.getByText('最新事件', { exact: true })).toBeVisible();
+      expect(requests).toHaveLength(4);
+    } finally { release(); await page.unrouteAll({ behavior: 'wait' }); }
+  });
+
+  test(`fault ${kind} empty page resets with only one follow-up read`, async ({ page }) => {
+    await mockAPI(page);
+    const pages = [];
+    await page.route(`**/event/${endpoint}*`, route => {
+      const index = Number(new URL(route.request().url()).searchParams.get('index')); pages.push(index);
+      return route.fulfill({ json: { code: 200, data: { index, total: 11, list: index === 1 ? [faultEventRow('有效事件')] : [] } } });
+    });
+    await page.goto(path);
+    await expect(page.getByText('有效事件', { exact: true })).toBeVisible();
+    await page.locator('.ant-pagination-item-2').click();
+    await expect.poll(() => pages.length).toBe(3);
+    await page.waitForLoadState('networkidle');
+    expect(pages).toEqual([1, 2, 1]);
+    await expect(page.getByText('有效事件', { exact: true })).toBeVisible();
+  });
+}
+
+test('fault current idle page does not schedule unused 100ms render updates', async ({ page }) => {
+  await mockAPI(page);
+  await page.clock.install();
+  await page.goto('/faultCenter/detail/fc');
+  await expect(page.getByText('暂无告警事件', { exact: true })).toBeVisible();
+  await page.waitForLoadState('networkidle');
+  await page.clock.pauseAt(new Date(Date.now() + 1000));
+  await page.evaluate(() => {
+    window.__idleTimers = 0;
+    const original = window.setTimeout;
+    window.setTimeout = function (callback, delay, ...args) {
+      if (delay === 100) window.__idleTimers += 1;
+      return original(callback, delay, ...args);
+    };
+  });
+  await page.clock.runFor(2000);
+  expect(await page.evaluate(() => window.__idleTimers)).toBe(0);
+});
+
+test('fault in-flight reads abort on search, tab switch and navigation', async ({ page }) => {
+  await mockAPI(page);
+  await page.addInitScript(() => {
+    window.__faultAborts = [];
+    const open = XMLHttpRequest.prototype.open;
+    XMLHttpRequest.prototype.open = function (method, url, ...args) {
+      if (/\/event\/(curEvent|hisEvent)/.test(String(url))) this.addEventListener('abort', () => window.__faultAborts.push(String(url)), { once: true });
+      return open.call(this, method, url, ...args);
+    };
+  });
+  const pending = [];
+  await page.route('**/event/*Event*', async route => {
+    await new Promise(resolve => pending.push(resolve));
+    await route.fulfill({ json: { code: 200, data: { list: [], total: 0 } } }).catch(() => {});
+  });
+  try {
+    await page.goto('/faultCenter/detail/fc');
+    await expect.poll(() => pending.length).toBe(1);
+    await page.getByPlaceholder('输入搜索关键字').fill('payment');
+    await expect.poll(() => pending.length).toBe(2);
+    await expect.poll(() => page.evaluate(() => window.__faultAborts.length)).toBe(1);
+    await page.getByRole('tab', { name: '历史告警', exact: true }).click();
+    await expect.poll(() => pending.length).toBe(3);
+    await expect.poll(() => page.evaluate(() => window.__faultAborts.length)).toBe(2);
+    await page.getByRole('button', { name: 'Copilot', exact: true }).click();
+    await expect(page).toHaveURL(/\/copilot$/);
+    await expect.poll(() => page.evaluate(() => window.__faultAborts.length)).toBe(3);
+    await expect(page.locator('.ant-message-notice-error')).toHaveCount(0);
+  } finally { pending.forEach(resolve => resolve()); await page.unrouteAll({ behavior: 'wait' }); }
+});
+
+test('fault current duration stays live without refreshing data and stops in hidden tabs', async ({ page }) => {
+  await mockAPI(page);
+  const instant = new Date('2026-10-10T12:00:00Z');
+  let reads = 0;
+  await page.route('**/event/curEvent*', route => {
+    reads += 1;
+    return route.fulfill({ json: { code: 200, data: { total: 1, list: [{ ...faultEventRow('计时事件'), first_trigger_time: instant.getTime() / 1000 - 30 }] } } });
+  });
+  await page.clock.install({ time: instant });
+  await page.goto('/faultCenter/detail/fc');
+  const cell = page.locator('.ant-tabs-tabpane-active .ant-table-tbody tr[data-row-key] td').nth(3);
+  await expect(cell).toContainText('秒');
+  await page.clock.pauseAt(new Date(instant.getTime() + 5000));
+  const before = await cell.innerText();
+  await page.clock.runFor(2000);
+  await expect(cell).not.toHaveText(before);
+  expect(reads).toBe(1);
+  await page.getByRole('tab', { name: '历史告警', exact: true }).click();
+  const hiddenCell = page.locator('.ant-tabs-tabpane-hidden .ant-table-tbody tr[data-row-key] td').nth(3);
+  const stopped = await hiddenCell.innerText();
+  await page.clock.runFor(5000);
+  expect(await hiddenCell.innerText()).toBe(stopped);
+  expect(reads).toBe(1);
+  await page.getByRole('tab', { name: '活跃告警', exact: true }).click();
+  await expect.poll(() => reads).toBe(2);
+  await expect(cell).not.toHaveText(stopped);
+});
+
+test('fault hidden event tabs stop searches and resume with the current URL', async ({ page }) => {
+  const requests = await mockAPI(page);
+  const reads = () => requests.filter(url => /\/event\/(curEvent|hisEvent)$/.test(url.pathname));
+  await page.clock.install();
+  await page.goto('/faultCenter/detail/fc');
+  await expect.poll(() => reads().length).toBe(1);
+  await page.getByRole('tab', { name: '历史告警', exact: true }).click();
+  await expect.poll(() => reads().length).toBe(2);
+  await page.clock.pauseAt(new Date(Date.now() + 1000));
+  const input = page.locator('.ant-tabs-tabpane-active').getByPlaceholder('输入搜索关键字');
+  await input.fill('payment');
+  await page.clock.runFor(300);
+  await expect.poll(() => reads().length).toBe(3);
+  expect(reads().at(-1).pathname).toMatch(/hisEvent$/);
+  await input.fill('switch-now');
+  await page.getByRole('tab', { name: '活跃告警', exact: true }).click();
+  await expect.poll(() => reads().length).toBe(4);
+  await page.clock.runFor(1000);
+  expect(reads()).toHaveLength(4);
+  expect(reads().at(-1).pathname).toMatch(/curEvent$/);
+  expect(reads().at(-1).searchParams.get('query')).toBe('switch-now');
+});
+
 async function mockAPI(page) {
   const requests = [];
   await page.addInitScript(() => {

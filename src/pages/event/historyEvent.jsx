@@ -1,5 +1,5 @@
 "use client"
-import React, { useState, useEffect, useCallback } from "react"
+import React, { useState, useEffect, useCallback, useRef } from "react"
 import {
     Table,
     Button,
@@ -57,13 +57,13 @@ const { RangePicker } = DatePicker
 const { Search } = Input
 
 export const AlertHistoryEvent = (props) => {
-    const { id } = props
+    const { id, active = true } = props
     const navigate = useNavigate()
     const location = useLocation()
 
     // State Management
     const [historyEventList, setHistoryEventList] = useState([])
-    const [searchQuery, setSearchQuery] = useState("") // State for the actual search query used in API
+    const searchQuery = new URLSearchParams(location.search).get('query') || ''
     const [selectedDataSource, setSelectedDataSource] = useState("")
     const [selectedAlertLevel, setSelectedAlertLevel] = useState("")
     const [startTimestamp, setStartTimestamp] = useState(null)
@@ -76,6 +76,13 @@ export const AlertHistoryEvent = (props) => {
         pageTotal: 0,
     })
     const [loading, setLoading] = useState(true)
+    const [loadError, setLoadError] = useState(false)
+    const requestSequence = useRef(0)
+    const activeRequest = useRef(null)
+    const searchTimer = useRef(null)
+    const typedQuery = useRef(null)
+    const previousQuery = useRef(searchQuery)
+    const [composing, setComposing] = useState(false)
     const [height, setHeight] = useState(window.innerHeight)
     const [comments, setComments] = useState([])
     const [newComment, setNewComment] = useState("")
@@ -356,16 +363,14 @@ export const AlertHistoryEvent = (props) => {
         }
     }, [])
 
-    useEffect(() => {
-        const searchParams = new URLSearchParams(location.search);
-        const query = searchParams.get('query');
-        if (query) {
-            setSearchQuery(query);
-        }
-    }, [location.search]);
-
     // Centralized data fetching function
-    const fetchHistoryEvents = async () => {
+    const fetchHistoryEvents = useCallback(async () => {
+        if (!active) return
+        clearTimeout(searchTimer.current)
+        activeRequest.current?.abort()
+        const controller = new AbortController()
+        activeRequest.current = controller
+        const sequence = ++requestSequence.current
         try {
             const params = {
                 faultCenterId: id,
@@ -379,7 +384,10 @@ export const AlertHistoryEvent = (props) => {
                 sortOrder: sortOrder || undefined,
             }
             setLoading(true)
-            const res = await getHisEventList(params)
+            setLoadError(false)
+            const res = await getHisEventList(params, controller.signal)
+            if (controller.signal.aborted || sequence !== requestSequence.current) return
+            if (res?.code !== 200) throw new Error('历史告警加载失败，请点击刷新重试')
             if (res?.data?.list) {
                 setHistoryEventList(res?.data?.list)
                 setHistoryPagination((prev) => ({
@@ -395,25 +403,31 @@ export const AlertHistoryEvent = (props) => {
                 }
             }
         } catch (error) {
+            if (controller.signal.aborted || sequence !== requestSequence.current) return
+            setLoadError(true)
             HandleApiError(error)
         } finally {
-            setLoading(false)
+            if (!controller.signal.aborted && sequence === requestSequence.current) setLoading(false)
         }
-    }
+    }, [active, id, historyPagination.pageIndex, historyPagination.pageSize, searchQuery, selectedDataSource, selectedAlertLevel, startTimestamp, endTimestamp, sortOrder])
 
-    // Main data fetching effect: triggers on dependency changes
     useEffect(() => {
-        fetchHistoryEvents()
-    }, [
-        selectedDataSource,
-        selectedAlertLevel,
-        startTimestamp,
-        endTimestamp,
-        searchQuery, // This is updated by input and URL sync
-        historyPagination.pageIndex, // This is updated by table pagination and search reset
-        historyPagination.pageSize,
-        sortOrder,
-    ])
+        const deferRead = searchQuery !== previousQuery.current && typedQuery.current === searchQuery && searchQuery !== ''
+        previousQuery.current = searchQuery
+        typedQuery.current = null
+        if (active) {
+            if (composing || deferRead) {
+                setLoading(true)
+                setLoadError(false)
+                if (!composing) searchTimer.current = setTimeout(fetchHistoryEvents, 300)
+            } else fetchHistoryEvents()
+        }
+        return () => {
+            clearTimeout(searchTimer.current)
+            requestSequence.current += 1
+            activeRequest.current?.abort()
+        }
+    }, [fetchHistoryEvents, searchQuery, composing, active])
 
     // Event Handlers
     const showDrawer = (record) => {
@@ -441,18 +455,19 @@ export const AlertHistoryEvent = (props) => {
     }
 
     const onSearchChange = (key) => {
-        setSearchQuery(key);
+        typedQuery.current = key;
+        setHistoryPagination(prev => ({ ...prev, pageIndex: 1 }));
         const searchParams = new URLSearchParams(location.search);
         searchParams.set('query', key);
         navigate(`${location.pathname}?${searchParams.toString()}`, { replace: true });
     };
 
     // Function to handle search submission (Enter or search button)
-    const handleSearchSubmit = (value) => {
-        // When search is submitted, reset page to 1
-        setHistoryPagination((prev) => ({ ...prev, pageIndex: 1 }))
-        // The `searchQuery` is already updated by `handleSearchInputChange`
-        // and the `useEffect` above will handle URL update and trigger data fetch.
+    const handleSearchSubmit = (value, event, info) => {
+        if (info?.source === 'clear' || composing || event?.nativeEvent?.isComposing || event?.keyCode === 229 || value !== searchQuery) return
+        clearTimeout(searchTimer.current)
+        if (historyPagination.pageIndex !== 1) setHistoryPagination(prev => ({ ...prev, pageIndex: 1 }))
+        else fetchHistoryEvents()
     }
 
     const handleSeverityChange = (value) => {
@@ -731,9 +746,11 @@ export const AlertHistoryEvent = (props) => {
                     allowClear
                     prefix={<SearchOutlined />}
                     placeholder="输入搜索关键字"
-                    onSearch={handleSearchSubmit} // On search button click or Enter
-                    value={searchQuery} // Controlled component
+                    onSearch={handleSearchSubmit}
+                    value={searchQuery}
                     onChange={(e) => onSearchChange(e.target.value)}
+                    onCompositionStart={() => setComposing(true)}
+                    onCompositionEnd={() => setComposing(false)}
                     style={{ width: 200 }}
                 />
                 <Select
@@ -783,7 +800,8 @@ export const AlertHistoryEvent = (props) => {
             {/* Data Table */}
             <Table
                 columns={columns}
-                dataSource={historyEventList}
+                dataSource={loadError ? [] : historyEventList}
+                locale={{ emptyText: <Empty description={loadError ? '历史告警加载失败，请点击刷新重试' : '暂无历史告警'} image={Empty.PRESENTED_IMAGE_SIMPLE} /> }}
                 loading={loading}
                 pagination={{
                     current: historyPagination.pageIndex,
