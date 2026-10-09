@@ -73,6 +73,8 @@ export const AlertStream = () => {
     const [claiming, setClaiming] = useState(false);
     const requestSequence = useRef(0);
     const historySequence = useRef(0);
+    const currentRequest = useRef(null);
+    const historyRequest = useRef(null);
     const activeCenterId = centerId === 'all' ? undefined : centerId;
 
     const loadCenters = useCallback(async () => {
@@ -93,18 +95,21 @@ export const AlertStream = () => {
 
     const loadEvents = useCallback(async () => {
         const request = ++requestSequence.current;
+        currentRequest.current?.abort();
+        const controller = new AbortController();
+        currentRequest.current = controller;
         try {
             setLoading(true);
             setLoadError('');
-            const res = await getCurEventList({ ...eventParams, queue: queue === 'history' ? 'all' : queue, includeSummary: true });
-            if (request !== requestSequence.current) return;
+            const res = await getCurEventList({ ...eventParams, queue: queue === 'history' ? 'all' : queue, includeSummary: true }, controller.signal);
+            if (request !== requestSequence.current || controller.signal.aborted) return;
             if (res?.code !== 200) throw new Error('加载告警失败');
             setEvents((res?.data?.list || []).filter(event => !isRecovered(event)));
             setTotal(res?.data?.total || 0);
             setSummary(res?.data?.summary || null);
             setLoadedKey(viewKey); setUpdatedAt(Date.now());
         } catch (error) {
-            if (request !== requestSequence.current) return;
+            if (request !== requestSequence.current || controller.signal.aborted) return;
             console.error('Unable to load alert stream:', error);
             setLoadError('加载告警失败，请重试。');
         } finally { if (request === requestSequence.current) setLoading(false); }
@@ -112,25 +117,28 @@ export const AlertStream = () => {
 
     const loadHistory = useCallback(async () => {
         const request = ++historySequence.current;
+        historyRequest.current?.abort();
+        const controller = new AbortController();
+        historyRequest.current = controller;
         try {
             setHistoryLoading(true);
             setLoadError('');
-            const res = await getHisEventList({ ...eventParams, environment: undefined, service: undefined });
-            if (request !== historySequence.current) return;
+            const res = await getHisEventList({ ...eventParams, environment: undefined, service: undefined }, controller.signal);
+            if (request !== historySequence.current || controller.signal.aborted) return;
             if (res?.code !== 200) throw new Error('加载历史事件失败');
             setHistoryEvents((res?.data?.list || []).map(event => ({ ...event, lifecycle_status: 'recovered' })));
             setHistoryTotal(res?.data?.total || 0);
             setLoadedKey(viewKey); setUpdatedAt(Date.now());
         } catch (error) {
-            if (request !== historySequence.current) return;
+            if (request !== historySequence.current || controller.signal.aborted) return;
             console.error('Unable to load alert history:', error);
             setLoadError('加载历史事件失败，请重试。');
         } finally { if (request === historySequence.current) setHistoryLoading(false); }
     }, [eventParams,viewKey]);
 
     useEffect(() => { loadCenters().catch(() => message.error('加载故障中心失败')); }, [loadCenters]);
-    useEffect(() => { if (queue !== 'history') loadEvents(); return () => { requestSequence.current++; }; }, [loadEvents, queue]);
-    useEffect(() => { if (queue === 'history') loadHistory(); return () => { historySequence.current++; }; }, [loadHistory, queue]);
+    useEffect(() => { if (queue !== 'history') loadEvents(); return () => { requestSequence.current++; currentRequest.current?.abort(); }; }, [loadEvents, queue]);
+    useEffect(() => { if (queue === 'history') loadHistory(); return () => { historySequence.current++; historyRequest.current?.abort(); }; }, [loadHistory, queue]);
     const selectedKey = params.get('event');
     useEffect(() => { if(loadedKey !== viewKey) {setSelected(null);return;} const list = queue === 'history' ? historyEvents : events; setSelected(list.find(item => item.fingerprint === selectedKey) || null); }, [selectedKey,loadedKey,viewKey,events,historyEvents,queue]);
 

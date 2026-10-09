@@ -24,7 +24,80 @@ async function mockAPI(page) {
   return requests;
 }
 
+for (const history of [false, true]) {
+  test(`new ${history ? 'history' : 'current'} result survives a canceled late response and refresh`, async ({ page }) => {
+    await mockAPI(page);
+    let release;
+    let started = false;
+    let count = 0;
+    const pending = new Promise(resolve => { release = resolve; });
+    await page.route(`**/event/${history ? 'hisEvent' : 'curEvent'}*`, async route => {
+      const old = !new URL(route.request().url()).searchParams.has('query');
+      count++;
+      if (old) { started = true; await pending; }
+      await route.fulfill({ json: { code: 200, data: { total: 1, list: [{ fingerprint: old ? 'old' : 'new', ruleName: old ? '旧结果不应出现' : '最新查询结果', faultCenterId: 'fc', status: 'alerting', severity: 'P0' }] } } }).catch(() => {});
+    });
+    try {
+      await page.goto(history ? '/alerts?queue=history' : '/alerts');
+      await expect.poll(() => started).toBe(true);
+      await page.getByRole('textbox', { name: '搜索告警' }).fill('payment');
+      await expect(page.locator('.alert-event-row')).toContainText(['最新查询结果']);
+      release();
+      await page.waitForLoadState('networkidle');
+      await expect(page.getByText('旧结果不应出现', { exact: true })).toHaveCount(0);
+      await page.getByRole('button', { name: /刷\s*新/, exact: true }).click();
+      await expect.poll(() => count).toBe(3);
+      await expect(page.locator('.alert-event-row')).toContainText(['最新查询结果']);
+      await expect(page.locator('.ant-message-notice-error')).toHaveCount(0);
+    } finally { release(); await page.unrouteAll({ behavior: 'wait' }); }
+  });
+}
+
 for (const width of [1440, 390]) {
+  test(`alert reads abort on filtering, queue switch and unmount at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await mockAPI(page);
+    await page.addInitScript(() => {
+      window.__alertAborts = [];
+      const open = XMLHttpRequest.prototype.open;
+      XMLHttpRequest.prototype.open = function (method, url, ...args) {
+        this.addEventListener('abort', () => window.__alertAborts.push(String(url)), { once: true });
+        return open.call(this, method, url, ...args);
+      };
+    });
+    const pending = [];
+    await page.route('**/event/*Event*', async route => {
+      // Keep every list response pending so abandoning a request is observable.
+      await new Promise(resolve => pending.push(resolve));
+      await route.fulfill({ json: { code: 200, data: { list: [], total: 0 } } }).catch(() => {});
+    });
+    try {
+      await page.goto('/alerts');
+      await expect.poll(() => pending.length).toBe(1);
+      await page.getByRole('textbox', { name: '搜索告警' }).fill('payment');
+      await expect.poll(() => pending.length).toBe(2);
+      await expect.poll(() => page.evaluate(() => window.__alertAborts.length)).toBe(1);
+      await page.getByRole('button', { name: '历史事件', exact: true }).click();
+      await expect.poll(() => pending.length).toBe(3);
+      await expect.poll(() => page.evaluate(() => window.__alertAborts.length)).toBe(2);
+      await page.getByRole('textbox', { name: '搜索告警' }).fill('latency');
+      await expect.poll(() => pending.length).toBe(4);
+      await expect.poll(() => page.evaluate(() => window.__alertAborts.length)).toBe(3);
+      await expect(page.getByText('加载告警失败，请重试。')).toHaveCount(0);
+      await expect(page.getByText('加载历史事件失败，请重试。')).toHaveCount(0);
+      await expect(page.locator('.ant-message-notice-error')).toHaveCount(0);
+      await page.getByRole('button', { name: '在 Copilot 中分析', exact: true }).click();
+      await expect(page).toHaveURL(/\/copilot/);
+      await expect.poll(() => page.evaluate(() => window.__alertAborts.length)).toBe(4);
+      const aborted = await page.evaluate(() => window.__alertAborts);
+      expect(aborted.filter(url => url.includes('/curEvent'))).toHaveLength(2);
+      expect(aborted.filter(url => url.includes('/hisEvent'))).toHaveLength(2);
+    } finally {
+      pending.forEach(resolve => resolve());
+      await page.unrouteAll({ behavior: 'wait' });
+    }
+  });
+
   test(`Copilot history pages, retries and keeps context at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await mockAPI(page);

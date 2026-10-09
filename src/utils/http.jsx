@@ -68,10 +68,11 @@ axios.interceptors.response.use(
  * @param params  请求参数
  * @returns {Promise}
  */
-export function get(url, params = {}) {
+export function get(url, params = {}, options = {}) {
     return new Promise((resolve, reject) => {
         axios
             .get(url, {
+                signal: options.signal,
                 params: params,
             })
             .then((response) => {
@@ -147,11 +148,11 @@ export function put(url, data = {}) {
 
 //统一接口处理，返回数据
 // eslint-disable-next-line import/no-anonymous-default-export
-export default function (method, url, param) {
+export default function (method, url, param, options) {
     return new Promise((resolve, reject) => {
         switch (method) {
             case 'get':
-                get(url, param)
+                get(url, param, options)
                     .then(function (response) {
                         resolve(response);
                     })

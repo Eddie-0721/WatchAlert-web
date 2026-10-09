@@ -1,29 +1,30 @@
 import http from '../utils/http';
-import { message } from 'antd';
 import {HandleApiError} from "../utils/lib";
 
-async function getCurEventList(params) {
+async function getCurEventList(params, signal) {
     try {
         const queryString = new URLSearchParams(Object.entries(params || {})
             .filter(([, value]) => value !== undefined && value !== null && value !== '')
             .map(([key, value]) => [key, String(value)])).toString();
-        const res = await http('get', `/api/w8t/event/curEvent${queryString ? `?${queryString}` : ''}`);
+        const res = await http('get', `/api/w8t/event/curEvent${queryString ? `?${queryString}` : ''}`, undefined, { signal });
         return res;
     } catch (error) {
+        if (signal?.aborted) throw error;
         HandleApiError(error)
         return error
     }
 }
 
-async function getHisEventList(params) {
+async function getHisEventList(params, signal) {
     try {
         const queryString = new URLSearchParams(Object.entries(params || {})
             .filter(([, value]) => value !== undefined && value !== null && value !== '')
             .map(([key, value]) => [key, String(value)])).toString();
         const url = `/api/w8t/event/hisEvent${queryString ? `?${queryString}` : ''}`;
-        const res = await http('get', url);
+        const res = await http('get', url, undefined, { signal });
         return res;
     } catch (error) {
+        if (signal?.aborted) throw error;
         HandleApiError(error)
         return error
     }
