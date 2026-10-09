@@ -37,17 +37,7 @@ async function restore(page) {
   await expect(page.locator('.copilot-turn')).toHaveCount(50);
 }
 
-test('Copilot collapsed evidence is not serialized before opening', async ({ page }) => {
-  await setup(page); await restore(page);
-  expect(await page.evaluate(() => window.__evidenceSerializations.length)).toBe(0);
-  await page.locator('.copilot-message-evidence .ant-collapse-header').first().click();
-  await expect(page.locator('.copilot-tool-evidence').first()).toContainText('production');
-  expect(await page.evaluate(() => window.__evidenceSerializations)).toEqual(['history-0']);
-});
-
-for (const width of [1440, 390]) test(`Copilot typing and streaming do not reserialize unchanged history at ${width}px`, async ({ page }) => {
-  await page.setViewportSize({ width, height: 900 });
-  await setup(page);
+async function controlledStream(page) {
   await page.addInitScript(() => {
     const original = window.fetch;
     window.fetch = (url, options) => {
@@ -60,6 +50,45 @@ for (const width of [1440, 390]) test(`Copilot typing and streaming do not reser
       return Promise.resolve(new Response(stream, { headers: { 'Content-Type': 'text/event-stream' } }));
     };
   });
+}
+
+test('Copilot streaming retains completed Markdown nodes while updating changed code', async ({ page }) => {
+  await setup(page); await controlledStream(page); await restore(page);
+  await page.getByRole('textbox', { name: '输入问题' }).fill('分析并给出配置');
+  await page.getByRole('button', { name: '发送', exact: true }).click();
+  await expect.poll(() => page.evaluate(() => Boolean(window.__pushReply))).toBe(true);
+  let content = '# 排查依据\n\n已经核实的数据。\n\n```yaml\nenvironment: production';
+  await page.evaluate(content => window.__pushReply('delta', { delta: content }), content);
+  const reply = page.locator('.copilot-turn').last();
+  await expect(reply.locator('code')).toContainText('environment: production');
+  const addition = '\ncluster: primary\n```'; content += addition;
+  await page.evaluate(delta => window.__pushReply('delta', { delta }), addition);
+  await expect(reply.locator('code')).toContainText('cluster: primary');
+  await reply.evaluate(node => { window.__completedMarkdown = ['h1', 'p', 'code'].map(selector => node.querySelector(selector)); });
+  for (let index = 0; index < 3; index++) {
+    const delta = `\n\n后续解释 ${index}`; content += delta;
+    await page.evaluate(delta => window.__pushReply('delta', { delta }), delta);
+    await expect(reply).toContainText(`后续解释 ${index}`);
+    expect(await page.evaluate(() => window.__completedMarkdown.map(node => node?.isConnected))).toEqual([true, true, true]);
+  }
+  await page.evaluate(content => { window.__pushReply('done', { content, evidence: '[]' }); window.__endReply(); }, content);
+  await expect(page.getByRole('button', { name: '发送', exact: true })).toBeVisible();
+  await expect(reply.locator('code')).toContainText('cluster: primary');
+  expect(await page.evaluate(() => window.__completedMarkdown.map(node => node?.isConnected))).toEqual([true, true, true]);
+});
+
+test('Copilot collapsed evidence is not serialized before opening', async ({ page }) => {
+  await setup(page); await restore(page);
+  expect(await page.evaluate(() => window.__evidenceSerializations.length)).toBe(0);
+  await page.locator('.copilot-message-evidence .ant-collapse-header').first().click();
+  await expect(page.locator('.copilot-tool-evidence').first()).toContainText('production');
+  expect(await page.evaluate(() => window.__evidenceSerializations)).toEqual(['history-0']);
+});
+
+for (const width of [1440, 390]) test(`Copilot typing and streaming do not reserialize unchanged history at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 900 });
+  await setup(page);
+  await controlledStream(page);
   await restore(page);
   await page.locator('.copilot-message-evidence .ant-collapse-header').first().click();
   await expect(page.locator('.copilot-tool-evidence').first()).toContainText('production');
