@@ -127,11 +127,8 @@ const VSCodeEditor = ({
         let resizeObserver;
         try {
             if (typeof ResizeObserver !== 'undefined' && containerRef.current) {
-                resizeObserver = new ResizeObserver((entries) => {
-                    // 使用 setTimeout 包装以进一步降低触发频率
-                    setTimeout(() => {
-                        debouncedResize();
-                    }, 0);
+                resizeObserver = new ResizeObserver(() => {
+                    debouncedResize();
                 });
                 resizeObserver.observe(containerRef.current);
             }
@@ -167,9 +164,9 @@ const VSCodeEditor = ({
     useEffect(() => {
         return () => {
             debouncedOnChange.cancel()
-            if (editorRef.current?.dispose) {
-                editorRef.current.dispose()
-            }
+            // @monaco-editor/react owns and disposes the editor/model. Clearing
+            // our reference prevents late layout work without disposing twice.
+            editorRef.current = null
         }
     }, [debouncedOnChange])
 
@@ -310,7 +307,7 @@ const VSCodeEditor = ({
                 <Editor
                     key={`${instanceId}-${language}-${theme}`}
                     height={height}
-                    language={language}
+                    language={typeof language === 'string' ? language.toLowerCase() : language}
                     value={value || ""}
                     onChange={handleEditorChange}
                     onMount={handleEditorDidMount}

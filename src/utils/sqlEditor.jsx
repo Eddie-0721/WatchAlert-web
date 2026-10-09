@@ -1,11 +1,21 @@
 "use client"
 
-import { useRef } from "react"
+import { useEffect, useRef } from "react"
 import Editor from "@monaco-editor/react"
 import '../monacoSetup';
 
 const SqlEditor = ({ value = "", onChange = (value) => {}, height = "50px", readOnly = false }) => {
     const editorRef = useRef(null)
+    const completionRef = useRef(null)
+    const changeListenerRef = useRef(null)
+    const suggestionTimerRef = useRef(null)
+
+    useEffect(() => () => {
+        clearTimeout(suggestionTimerRef.current)
+        changeListenerRef.current?.dispose()
+        completionRef.current?.dispose()
+        editorRef.current = null
+    }, [])
 
     // SQL 关键词和建议
     const sqlSuggestions = [
@@ -109,10 +119,9 @@ const SqlEditor = ({ value = "", onChange = (value) => {}, height = "50px", read
 
     // 在编辑器挂载前注册语言支持
     const handleEditorWillMount = (monaco) => {
-        console.log("正在注册 SQL 自动补全...")
-
         // 注册自动补全提供者
-        monaco.languages.registerCompletionItemProvider("sql", {
+        completionRef.current?.dispose()
+        completionRef.current = monaco.languages.registerCompletionItemProvider("sql", {
             provideCompletionItems: (model, position) => {
                 // 获取当前单词
                 const word = model.getWordUntilPosition(position)
@@ -140,13 +149,11 @@ const SqlEditor = ({ value = "", onChange = (value) => {}, height = "50px", read
             triggerCharacters: [" ", ".", "(", ","],
         })
 
-        console.log("SQL 自动补全注册完成")
     }
 
     // 编辑器挂载后的处理
     const handleEditorDidMount = (editor, monaco) => {
         editorRef.current = editor
-        console.log("编辑器挂载完成")
 
         // 设置编辑器选项
         editor.updateOptions({
@@ -174,21 +181,27 @@ const SqlEditor = ({ value = "", onChange = (value) => {}, height = "50px", read
 
         // 添加键盘快捷键来手动触发补全
         editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Space, () => {
-            console.log("手动触发自动补全")
             editor.trigger("keyboard", "editor.action.triggerSuggest", {})
         })
 
         // 监听内容变化，在特定情况下自动触发补全
-        editor.onDidChangeModelContent(() => {
+        changeListenerRef.current?.dispose()
+        clearTimeout(suggestionTimerRef.current)
+        changeListenerRef.current = editor.onDidChangeModelContent(() => {
+            clearTimeout(suggestionTimerRef.current)
             const position = editor.getPosition()
             const model = editor.getModel()
+            if (!position || !model) return
             const lineContent = model.getLineContent(position.lineNumber)
             const currentWord = lineContent.substring(0, position.column - 1)
 
             // 如果输入了 2 个或更多字符，自动触发补全
             if (currentWord.length >= 2 && /[a-zA-Z]$/.test(currentWord)) {
-                setTimeout(() => {
-                    editor.trigger("auto", "editor.action.triggerSuggest", {})
+                suggestionTimerRef.current = setTimeout(() => {
+                    suggestionTimerRef.current = null
+                    if (editorRef.current === editor && editor.getModel()) {
+                        editor.trigger("auto", "editor.action.triggerSuggest", {})
+                    }
                 }, 100)
             }
         })

@@ -595,6 +595,114 @@ for (const route of ['/ruleGroup/g/rule/list', '/tmplType/Prometheus/g/templates
   });
 }
 
+test('scoped editor languages retain JSON validation, formatting, find and YAML highlighting', async ({ page }) => {
+  await mockAPI(page);
+  const workers = [];
+  const errors = [];
+  page.on('worker', worker => workers.push(worker.url()));
+  page.on('pageerror', error => errors.push(error.message));
+  await page.goto('/ruleGroup/g/rule/list');
+  await page.getByRole('button', { name: /导\s*入/, exact: true }).click();
+  const editor = page.locator('.monaco-editor').first();
+  const input = editor.locator('textarea.inputarea');
+  await expect(editor).toBeVisible();
+  await page.getByText('Prometheus Rule YAML', { exact: true }).click();
+  await expect(editor.locator('.view-lines')).toContainText('Exporter');
+  await expect.poll(() => editor.locator('.view-lines span').evaluateAll(nodes => new Set(nodes.map(node => node.className).filter(name => /^mtk\d+$/.test(name))).size)).toBeGreaterThan(1);
+  await page.getByText('WatchAlert JSON', { exact: true }).click();
+  await input.press('ControlOrMeta+A');
+  await input.evaluate((element, text) => {
+    const data = new DataTransfer(); data.setData('text/plain', text);
+    element.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }));
+  }, '{"bad":}');
+  await expect(editor.locator('.squiggly-error').first()).toBeVisible();
+  await input.press('ControlOrMeta+A');
+  await input.evaluate((element, text) => {
+    const data = new DataTransfer(); data.setData('text/plain', text);
+    element.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }));
+  }, '{"environment":"prod","enabled":true}');
+  await expect(editor.locator('.squiggly-error')).toHaveCount(0);
+  await input.press('Shift+Alt+F');
+  await expect.poll(() => editor.locator('.view-line').count()).toBeGreaterThan(2);
+  await input.press('ControlOrMeta+f');
+  await expect(editor.locator('.find-widget')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(editor.locator('.find-widget')).not.toHaveClass(/visible/);
+  expect(workers.some(url => /json\.worker/.test(url))).toBe(true);
+  expect(workers.every(url => url.startsWith('http://127.0.0.1:4187/'))).toBe(true);
+  expect(errors).toEqual([]);
+});
+
+test('known Monaco cancellation on immediate focused JSON editor disposal', async ({ page }) => {
+  // Opt-in reproducer, not a passing acceptance check: Monaco 0.52.2's
+  // WordHighlighter discards Delayer.trigger()'s rejecting cancellation promise.
+  // Reproduced with both the original package entry and our scoped entry.
+  test.skip(process.env.WATCHALERT_EDITOR_CANCELLATION_REPRO !== '1', 'Known upstream cancellation issue; see PERFORMANCE-EDITOR-LIFECYCLE-2026-10-10.md');
+  await mockAPI(page);
+  const errors = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.goto('/ruleGroup/g/rule/list');
+  await page.getByRole('button', { name: /导\s*入/, exact: true }).click();
+  const input = page.locator('.monaco-editor textarea.inputarea').first();
+  await input.press('ControlOrMeta+A');
+  await page.keyboard.insertText('{"environment":"prod"}');
+  await input.press('ControlOrMeta+f');
+  await input.press('Escape');
+  await page.getByText('Prometheus Rule YAML', { exact: true }).click();
+  await expect(page.locator('.monaco-editor .view-lines').first()).toContainText('Exporter');
+  expect(errors).toEqual([]);
+});
+
+test('local editor core retains JSON version diff', async ({ page }) => {
+  await mockAPI(page);
+  const errors = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.route('**/prometheus/*', route => {
+    const endpoint = new URL(route.request().url()).pathname.split('/').at(-1);
+    const replies = {
+      targetGroupList: { list: [{ id: 1, name: '测试组' }], total: 1 },
+      targetList: { list: [{ id: 'target', groupId: 1, targets: ['new:9090'], labels: {} }], total: 1, index: 1, size: 10 },
+      targetGet: { id: 'target', targets: ['new:9090'], labels: { env: 'prod' } },
+      targetVersionList: { list: [{ id: 'version', version: 1 }], total: 1 },
+      targetVersionGet: { targets: ['old:9090'], labels: { env: 'test' } },
+    };
+    return route.fulfill({ json: { code: 200, data: replies[endpoint] || [] } });
+  });
+  await page.goto('/prometheusTargets/1/list');
+  await page.getByRole('button', { name: '更多操作：target' }).click();
+  await page.getByText('历史版本', { exact: true }).click();
+  const diff = page.locator('.monaco-diff-editor');
+  await expect(diff).toBeVisible();
+  await expect(diff.locator('.view-lines').first()).toContainText('old:9090');
+  await expect(diff.locator('.view-lines').last()).toContainText('new:9090');
+  await expect(diff.locator('.char-insert, .line-insert, .char-delete, .line-delete').first()).toBeVisible();
+  await page.getByRole('button', { name: 'Close', exact: true }).click();
+  await expect(diff).toBeHidden();
+  expect(errors).toEqual([]);
+});
+
+test('SQL editor completion providers are released across repeated mounts', async ({ page }) => {
+  await mockAPI(page);
+  const errors = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.goto('/ruleGroup/g/rule/add');
+  for (let round = 0; round < 3; round++) {
+    await page.getByText('ClickHouse', { exact: true }).click();
+    const editor = page.locator('.monaco-editor').first();
+    await expect(editor).toBeVisible();
+    const input = editor.locator('textarea');
+    await input.press('ControlOrMeta+A');
+    await input.pressSequentially('SEL');
+    await input.press('ControlOrMeta+Space');
+    await expect(editor.locator('.suggest-widget.visible .label-name').filter({ hasText: /^SELECT$/ })).toHaveCount(1);
+    await input.press('Escape');
+    await page.getByText('Prometheus', { exact: true }).click();
+    await expect(page.locator('.monaco-editor')).toHaveCount(0);
+  }
+  await page.waitForTimeout(150);
+  expect(errors).toEqual([]);
+});
+
 for (const outcome of ['done', 'error']) {
   test(`Copilot burst updates preserve ${outcome} and readable code blocks`, async ({ page }) => {
     await mockAPI(page);
