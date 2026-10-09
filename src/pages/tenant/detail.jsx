@@ -29,7 +29,9 @@ export const TenantDetail = ()=>{
     }
 
     const formatTimestamp = (timestamp) => {
-        const date = new Date(timestamp * 1000); // Multiply by 1000 to convert seconds to milliseconds
+        if (!timestamp || !Number.isFinite(Number(timestamp))) return '更新时间未知';
+        const date = new Date(Number(timestamp) * 1000); // Multiply by 1000 to convert seconds to milliseconds
+        if (Number.isNaN(date.getTime())) return '更新时间未知';
         const year = date.getFullYear();
         const month = (date.getMonth() + 1).toString().padStart(2, '0'); // Months are zero-based
         const day = date.getDate().toString().padStart(2, '0');

@@ -419,13 +419,8 @@ export const RecordingRuleIndex = () => {
         }
         return (
             <>
-                <div style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    marginBottom: "20px",
-                    alignItems: "center"
-                }}>
-                    <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+                <div className="wa-management-toolbar">
+                    <div className="wa-management-toolbar__filters">
                         <Radio.Group
                             options={[
                                 { label: "全部", value: "all" },
@@ -436,19 +431,18 @@ export const RecordingRuleIndex = () => {
                             onChange={changeStatus}
                             optionType="button"
                         />
-                        <Search allowClear placeholder="输入搜索关键字" onSearch={onSearch} style={{ width: 300 }} />
+                        <div className="wa-list-toolbar__search"><Search allowClear placeholder="输入搜索关键字" onSearch={onSearch} /></div>
                         {selectedRowKeys.length > 0 && (
                             <div style={{ color: '#1677ff', fontSize: '14px' }}>
                                 已选择 {selectedRowKeys.length} 项
                             </div>
                         )}
                     </div>
-                    <div style={{ display: "flex", gap: "10px" }}>
+                    <div className="wa-management-toolbar__actions">
                         <Link to={`/recordingRules/${id}/create`}>
                             <Button
                                 type="primary"
                                 size="default"
-                                style={{ backgroundColor: "#000000" }}
                                 icon={<PlusOutlined />}
                             >
                                 创建
@@ -459,6 +453,7 @@ export const RecordingRuleIndex = () => {
 
                 <TableWithPagination
                     columns={columns}
+                    scrollX={860}
                     dataSource={list}
                     pagination={pagination}
                     onPageChange={(page, pageSize) => {
@@ -485,8 +480,8 @@ export const RecordingRuleIndex = () => {
     return (
         <>
             <Breadcrumb items={['告警管理', '记录规则']} />
-            <div style={{ display: 'flex', height: '100%' }}>
-                <div style={{ width: '210px', flexShrink: 0, paddingRight: '12px' }}>
+            <div className="wa-management-split">
+                <div className="wa-management-sidebar">
                     <RuleGroupSidebar
                         selectedRuleGroupId={String(selectedRuleGroupId)}
                         onRuleGroupChange={handleRuleGroupChange}
@@ -494,7 +489,7 @@ export const RecordingRuleIndex = () => {
                     />
                 </div>
                 
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', marginLeft: '20px' }}>
+                <div className="wa-management-main">
                     <div style={{
                         background: '#fff',
                         borderRadius: '8px',

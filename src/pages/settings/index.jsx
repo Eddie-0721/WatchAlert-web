@@ -410,12 +410,20 @@ export const SystemSettings = () => {
 
 
     const segmentedOptions = ['系统认证', 'LDAP 认证', 'OIDC 认证'];
+    const settingSections = [
+        {key: '1', href: '#communication', title: '通信配置'},
+        {key: '2', href: '#ai', title: 'AI 能力'},
+        {key: '2a', href: '#copilot', title: 'Copilot Agent'},
+        {key: '3', href: '#auth', title: '认证'},
+        {key: '999', href: '#version', title: '系统版本'},
+        {key: '9999', href: '#option', title: '保存取消'},
+    ];
 
     return (
         <>
             <Breadcrumb items={['系统设置']} />
-            <div style={{ display: 'flex', width: '100%' }}>
-                <div style={{ width: '90%', alignItems: 'flex-start', textAlign: 'start', height: '90%', overflowY: 'auto' }}>
+            <div className="wa-settings-layout">
+                <div className="wa-settings-main">
                     {loadError && <Alert type="error" showIcon message="设置读取失败，已禁止保存，避免覆盖现有配置"
                         action={<Button onClick={loadSettings} loading={loading}>重新加载</Button>} />}
                     <CredentialContext.Provider value={credentialsSet}>
@@ -961,18 +969,11 @@ export const SystemSettings = () => {
                     </CredentialContext.Provider>
                 </div>
 
+                <nav className="wa-settings-mobile-nav" aria-label="系统设置目录">
+                    {settingSections.map(section => <a key={section.key} href={section.href}>{section.title}</a>)}
+                </nav>
                 <div className="systemSettingsAnchorContainer">
-                    <Anchor
-                        affix
-                        items={[
-                            {key: '1', href: '#communication', title: '通信配置'},
-                            {key: '2', href: '#ai', title: 'AI 能力'},
-                            {key: '2a', href: '#copilot', title: 'Copilot Agent'},
-                            {key: '3', href: '#auth', title: '认证'},
-                            {key: '999', href: '#version', title: '系统版本'},
-                            {key: '9999', href: '#option', title: '保存取消'},
-                        ]}
-                    />
+                    <Anchor affix items={settingSections} />
                 </div>
             </div>    
         </>

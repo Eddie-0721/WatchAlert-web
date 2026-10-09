@@ -1,0 +1,7 @@
+.wa-query-input-row > .ant-col { min-width: 0; }
+.wa-query-input-row .ant-form-item { min-width: 0; }
+.wa-query-input-row .ant-select { width: 100%; }
+
+@media (max-width: 767px) {
+  .wa-query-input-row .ant-btn { min-height: 36px; }
+}

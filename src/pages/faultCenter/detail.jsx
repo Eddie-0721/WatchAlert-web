@@ -252,7 +252,7 @@ const handleGetSlo = async () => {
 
         {/* 近7天 SLO 线性图看板 */}
         <Row gutter={16} style={{ marginTop: 8, marginBottom: 20 }}>
-          <Col span={12}>
+          <Col xs={24} md={12}>
             <div
               style={{
                 padding: "20px",
@@ -337,7 +337,7 @@ const handleGetSlo = async () => {
             </div>
           </Col>
 
-          <Col span={12}>
+          <Col xs={24} md={12}>
             <div
               style={{
                 padding: "20px",

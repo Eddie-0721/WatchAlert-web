@@ -10,6 +10,7 @@ import { Table, Pagination } from 'antd';
  * @param {Function} props.onPageChange - 页码变化回调
  * @param {Function} props.onPageSizeChange - 页面大小变化回调
  * @param {number} props.scrollY - 垂直滚动高度
+ * @param {number|string} props.scrollX - 表格最小横向宽度，窄屏时在表格内部滚动
  * @param {string} props.rowKey - 行唯一标识字段名，默认'id'
  * @param {Function} props.showTotal - 显示总数的函数
  * @param {boolean} props.loading - 加载状态
@@ -26,6 +27,7 @@ export const TableWithPagination = ({
   onPageChange,
   onPageSizeChange,
   scrollY,
+  scrollX = 'max-content',
   rowKey = 'id',
   showTotal,
   loading,
@@ -54,7 +56,7 @@ export const TableWithPagination = ({
         pagination={false}
         scroll={{
           y: typeof scrollY === 'number' ? Math.max(200, scrollY) : scrollY,
-          x: 'max-content',
+          x: scrollX,
         }}
         style={{
           backgroundColor: '#fff',
@@ -86,16 +88,7 @@ export const TableWithPagination = ({
         // }
       />
     </div>
-    <div
-      style={{
-        width: '100%',
-        background: '#fff',
-        padding: '8px 0',
-        zIndex: 100,
-        display: 'flex',
-        justifyContent: 'flex-end',
-      }}
-    >
+    <div className="wa-table-pagination">
       <Pagination
         size="small"
         current={pagination?.index ?? 1}

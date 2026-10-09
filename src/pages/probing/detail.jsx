@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
-import { Spin, Select, message } from 'antd';
+import { Spin, Select, Empty, message } from 'antd';
 import { ProbingList } from '../../api/probing';
 import { queryRangePromMetrics } from '../../api/other';
 import { EventMetricChart } from '../chart/eventMetricChart';
@@ -101,12 +101,16 @@ const METRICS_CONFIG = {
 export const ProbingMetrics = () => {
     const { id } = useParams();
     const [loading, setLoading] = useState(true);
+    const [taskInfoLoading, setTaskInfoLoading] = useState(true);
+    const [taskInfoError, setTaskInfoError] = useState('');
     const [taskInfo, setTaskInfo] = useState(null);
     const [metricsData, setMetricsData] = useState({});
     const [timeRange, setTimeRange] = useState('1h');
 
     // 获取任务信息
     const fetchTaskInfo = useCallback(async () => {
+        setTaskInfoLoading(true);
+        setTaskInfoError('');
         try {
             const res = await ProbingList({});
             
@@ -116,12 +120,16 @@ export const ProbingMetrics = () => {
                 if (task) {
                     setTaskInfo(task);
                 } else {
-                    message.error('未找到对应的拨测任务');
+                    setTaskInfoError('未找到对应的拨测任务');
                 }
+            } else {
+                setTaskInfoError('未找到对应的拨测任务');
             }
         } catch (error) {
-            message.error('获取任务信息失败');
+            setTaskInfoError('获取任务信息失败，请稍后重试');
             console.error(error);
+        } finally {
+            setTaskInfoLoading(false);
         }
     }, [id]);
 
@@ -231,12 +239,12 @@ export const ProbingMetrics = () => {
 
     if (!taskInfo) {
         return (
-            <div style={{ padding: '20px', textAlign: 'center' }}>
-                <Spin size="large" />
-                <p style={{ marginTop: '16px', color: '#666' }}>
-                    正在加载任务信息...
-                </p>
-            </div>
+            <>
+                <Breadcrumb items={['网络分析', '拨测任务', '详情']} />
+                <div style={{ padding: '40px 20px', textAlign: 'center' }}>
+                    {taskInfoLoading ? <><Spin size="large" /><p style={{ marginTop: 16, color: '#71717a' }}>正在加载任务信息...</p></> : <Empty description={taskInfoError} />}
+                </div>
+            </>
         );
     }
 
@@ -282,12 +290,14 @@ export const ProbingMetrics = () => {
                 display: 'flex', 
                 justifyContent: 'space-between', 
                 alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: '12px',
                 marginBottom: '20px'
             }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                    <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px', minWidth: 0 }}>
+                    <div style={{ minWidth: 0 }}>
                         <h2 style={{ margin: 0 }}>{taskInfo.ruleName}</h2>
-                        <p style={{ margin: '4px 0 0 0', color: '#666' }}>
+                        <p style={{ margin: '4px 0 0 0', color: '#666', overflowWrap: 'anywhere' }}>
                             {taskInfo.probingEndpointConfig?.endpoint && taskInfo.probingEndpointConfig.endpoint.length > 150 
                                 ? `${taskInfo.probingEndpointConfig.endpoint.substring(0, 150)}...`
                                 : taskInfo.probingEndpointConfig?.endpoint}
@@ -312,7 +322,7 @@ export const ProbingMetrics = () => {
             <Spin spinning={loading}>
                 <div style={{
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(500px, 1fr))',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))',
                     gap: '20px'
                 }}>
                     {Object.entries(metricsData).map(([title, metric]) => (

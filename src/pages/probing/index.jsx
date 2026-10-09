@@ -300,19 +300,18 @@ export const Probing = () => {
     return (
         <>
             <Breadcrumb items={['网络分析', '拨测任务']} />
-            <div style={{display: 'flex', justifyContent: 'space-between'}}>
-                <div style={{display: 'flex', gap: '10px'}}>
+            <div className="wa-list-toolbar">
+                <div className="wa-list-toolbar__search">
                     <Search
                         allowClear
                         placeholder="输入搜索关键字"
                         onSearch={onSearch}
                         value={searchQuery} // 将 searchQuery 作为输入框的值
                         onChange={(e) => setSearchQuery(e.target.value)} // 更新 searchQuery 状态
-                        style={{width: 300}}
                     />
                 </div>
 
-                <div style={{display: 'flex', gap: '10px'}}>
+                <div className="wa-list-toolbar__actions">
                     <Tooltip title="帮助手册">
                         <Button
                             type="default"
@@ -326,7 +325,6 @@ export const Probing = () => {
                     <Button
                         type="primary"
                         size="default"
-                        style={{ marginLeft: 'auto', backgroundColor: '#000000' }}
                         onClick={() => {
                             handleList()
                         }}
@@ -336,9 +334,6 @@ export const Probing = () => {
                     <Link to="/probing/create">
                         <Button
                             type="primary"
-                            style={{
-                                backgroundColor: '#000000'
-                            }}
                             icon={<PlusOutlined />}
                         > 创建 </Button>
                     </Link>

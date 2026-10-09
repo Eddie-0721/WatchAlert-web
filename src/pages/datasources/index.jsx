@@ -296,7 +296,7 @@ export const Datasources = () => {
                     columns={columns}
                     scroll={{
                         y: height - 250, // 动态设置滚动高度
-                        x: 'max-content', // 水平滚动
+                        x: 1000, // 保持列标题可读，在表格内部横向滚动
                     }}
                     style={{
                         backgroundColor: "#fff",

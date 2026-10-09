@@ -1,6 +1,18 @@
+.wa-settings-layout { display: flex; width: 100%; }
+.wa-settings-main { width: 90%; min-width: 0; height: 90%; overflow-y: auto; text-align: start; }
+.wa-settings-mobile-nav { display: none; }
 .systemSettingsAnchorContainer {
     flex: 1;
     display: flex;
     flex-direction: row;
     justify-content: flex-end;
+}
+
+@media (max-width: 760px) {
+    .wa-settings-layout { flex-direction: column; }
+    .wa-settings-main { width: 100%; height: auto; overflow: visible; }
+    .wa-settings-mobile-nav { display: flex; order: -1; gap: 8px; width: 100%; margin-bottom: 16px; padding-bottom: 8px; overflow-x: auto; overscroll-behavior-x: contain; }
+    .wa-settings-mobile-nav a { flex: 0 0 auto; padding: 8px 10px; border: 1px solid #e4e4e7; border-radius: 6px; color: #52525b; background: #fff; font-size: 12px; white-space: nowrap; }
+    .wa-settings-mobile-nav a:hover { border-color: #a1a1aa; color: #18181b; }
+    .systemSettingsAnchorContainer { display: none; }
 }

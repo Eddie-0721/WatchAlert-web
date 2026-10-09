@@ -28,28 +28,14 @@ export const NoticeTemplate = () => {
             title: '名称',
             dataIndex: 'name',
             key: 'name',
-            width: 'auto',
+            width: 240,
             render: (text, record) => (
-                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    {text}
+                <div className="wa-resource-name-cell">
+                    <span className="wa-resource-name" title={text}>{text}</span>
                     <Tooltip title="点击复制 ID">
-                        <span
-                            style={{
-                                color: '#8c8c8c',     // 灰色字体
-                                fontSize: '12px',
-                                cursor: 'pointer',
-                                userSelect: 'none',
-                                display: 'inline-block',
-                                maxWidth: '200px',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap'
-                            }}
-                            onClick={() => copyToClipboard(record.id)}
-                        >
-                            {record.id}
-                            <CopyOutlined style={{ marginLeft: 8 }} />
-                        </span>
+                        <Button type="link" className="wa-resource-id" aria-label={`复制通知模板 ID ${text}`} title={record.id} onClick={() => copyToClipboard(record.id)}>
+                            <span>{record.id}</span><CopyOutlined />
+                        </Button>
                     </Tooltip>
                 </div>
             ),
@@ -58,7 +44,7 @@ export const NoticeTemplate = () => {
             title: '模版类型',
             dataIndex: 'noticeType',
             key: 'noticeType',
-            width: 'auto',
+            width: 120,
             render: (text, record) => {
                 if (record.noticeType === 'FeiShu') {
                     return (
@@ -103,14 +89,14 @@ export const NoticeTemplate = () => {
             title: '描述',
             dataIndex: 'description',
             key: 'description',
-            width: 'auto',
-            render: (text) => (!text ? '-' : text),
+            width: 240,
+            render: (text) => (!text ? '-' : <span className="wa-resource-description" title={text}>{text}</span>),
         },
         {
             title: "更新时间",
             dataIndex: "updateAt",
             key: "updateAt",
-            width: "auto",
+            width: 180,
             render: (text) => {
                 const date = new Date(text * 1000)
                     return (
@@ -124,7 +110,7 @@ export const NoticeTemplate = () => {
             title: "操作人",
             dataIndex: "updateBy",
             key: "updateBy",
-            width: "auto",
+            width: 140,
             render: (text) => {
                 return <Tag style={{
                                 borderRadius: "12px",
@@ -185,6 +171,7 @@ export const NoticeTemplate = () => {
                     >
                         <Button
                             type="text"
+                            aria-label={`更多操作：${record.name}`}
                             icon={<MoreOutlined />}
                             style={{ color: "#666" }}
                         />
@@ -272,13 +259,12 @@ export const NoticeTemplate = () => {
     return (
         <>
             <Breadcrumb items={['通知管理', '通知模版']} />
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <div>
+            <div className="wa-list-toolbar">
+                <div className="wa-list-toolbar__search">
                     <Search
                         allowClear
                         placeholder="输入搜索关键字"
                         onSearch={onSearch}
-                        style={{ width: 300 }}
                     />
                 </div>
                 <div>
@@ -287,9 +273,6 @@ export const NoticeTemplate = () => {
                         onClick={() => {
                             setCreateSelectedRow(null); // 确保正常创建时清空状态
                             setVisible(true)
-                        }}
-                        style={{
-                            backgroundColor: '#000000'
                         }}
                         icon={<PlusOutlined />}
                     >
@@ -320,7 +303,7 @@ export const NoticeTemplate = () => {
                     dataSource={list}
                     scroll={{
                         y: height - 250, // 动态设置滚动高度
-                        x: 'max-content', // 水平滚动
+                        x: 980, // 窄屏时保持表头可读，表格内部滚动
                     }}
                     style={{
                         backgroundColor: "#fff",

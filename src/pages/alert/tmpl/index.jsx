@@ -380,9 +380,9 @@ export const RuleTemplate = () => {
     return (
         <>
             <Breadcrumb items={['告警管理', '模版']} />
-            <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-                    <Search allowClear placeholder="输入搜索关键字" onSearch={onSearch} style={{ width: 300 }} />
+            <div className="wa-management-toolbar">
+                <div className="wa-management-toolbar__filters">
+                    <div className="wa-list-toolbar__search"><Search allowClear placeholder="输入搜索关键字" onSearch={onSearch} /></div>
                     
                     {/* 选择状态显示 */}
                     {selectedRowKeys.length > 0 && (
@@ -394,7 +394,7 @@ export const RuleTemplate = () => {
                         </div>
                     )}
                 </div>
-                <div style={{ display: "flex", gap: "10px" }}>
+                <div className="wa-management-toolbar__actions">
                     {/* 批量操作按钮 */}
                     <Dropdown menu={batchOperationMenu} disabled={selectedRowKeys.length === 0}>
                         <Button>
@@ -408,9 +408,6 @@ export const RuleTemplate = () => {
                         size="default"
                         icon={<ImportOutlined />}
                         onClick={handleImportClick}
-                        style={{
-                            backgroundColor: "#000000",
-                        }}
                     >
                         导入
                     </Button>
@@ -426,9 +423,6 @@ export const RuleTemplate = () => {
                         type="primary"
                         onClick={() => setVisible(true)}
                         icon={<PlusOutlined />}
-                        style={{
-                            backgroundColor: "#000000",
-                        }}
                     >
                         创建
                     </Button>
@@ -511,6 +505,7 @@ export const RuleTemplate = () => {
 
             <TableWithPagination
                 columns={columns}
+                scrollX={780}
                 dataSource={list}
                 pagination={pagination}
                 onPageChange={(page, pageSize) => {

@@ -296,7 +296,7 @@ export const NoticeRecords = ({ noticeObjectId }) => {
                     value={filters.query}
                     onChange={(e) => handleFilterChange("query", e.target.value)}
                     onSearch={() => fetchRecords(1, pagination.pageSize)}
-                    style={{ width: 300 }}
+                    style={{ width: 'min(100%, 300px)' }}
                     prefix={<SearchIcon size={14} />}
                 />
 

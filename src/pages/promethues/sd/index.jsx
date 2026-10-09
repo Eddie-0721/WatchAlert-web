@@ -249,7 +249,7 @@ export const PrometheusServiceDiscovery = () => {
             title: "操作",
             dataIndex: "operation",
             fixed: "right",
-            width: 10,
+            width: 64,
             render: (_, record) => {
                 const items = [
                     {
@@ -283,7 +283,7 @@ export const PrometheusServiceDiscovery = () => {
                 ]
                 return (
                     <Dropdown menu={{ items }} trigger={['click']} placement="bottomRight">
-                        <Button type="text" icon={<MoreOutlined />} style={{ color: "#666" }} />
+                        <Button type="text" aria-label={`更多操作：${record.id}`} icon={<MoreOutlined />} style={{ color: "#666" }} />
                     </Dropdown>
                 )
             },
@@ -316,13 +316,8 @@ export const PrometheusServiceDiscovery = () => {
         }
         return (
             <>
-                <div style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    marginBottom: "20px",
-                    alignItems: "center"
-                }}>
-                    <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                <div className="wa-management-toolbar">
+                    <div className="wa-management-toolbar__filters">
                         <Segmented
                             value={searchMode}
                             onChange={handleSearchModeChange}
@@ -334,12 +329,12 @@ export const PrometheusServiceDiscovery = () => {
                         />
                         <Search
                             allowClear
+                            className="wa-list-toolbar__search"
                             placeholder={searchMode === 'global' ? '全局搜索 Target...' : '搜索当前组 Target...'}
                             onSearch={onSearch}
-                            style={{ width: 280 }}
                         />
                     </div>
-                    <div style={{ display: "flex", gap: "10px" }}>
+                    <div className="wa-management-toolbar__actions">
                         <Tooltip title="接口使用指南">
                             <Button
                                 icon={<QuestionCircleOutlined />}
@@ -360,6 +355,7 @@ export const PrometheusServiceDiscovery = () => {
 
                 <TableWithPagination
                     columns={columns}
+                    scrollX={960}
                     dataSource={list}
                     pagination={pagination}
                     onPageChange={(page, pageSize) => {
@@ -385,15 +381,15 @@ export const PrometheusServiceDiscovery = () => {
     return (
         <>
             <Breadcrumb items={['数据管理', '服务发现']} />
-            <div style={{ display: 'flex', height: '100%' }}>
-                <div style={{ width: '210px', flexShrink: 0, paddingRight: '12px' }}>
+            <div className="wa-management-split">
+                <div className="wa-management-sidebar">
                     <ServiceGroupSidebar
                         selectedGroupId={selectedGroupId}
                         onGroupChange={handleGroupChange}
                     />
                 </div>
 
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', marginLeft: '20px' }}>
+                <div className="wa-management-main">
                     <div style={{
                         background: '#fff',
                         borderRadius: '8px',

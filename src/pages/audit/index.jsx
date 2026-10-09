@@ -29,14 +29,9 @@ export const AuditLog = () => {
             key: "id",
             width: "250px",
             render: (_, record) => (
-                <span
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => showDrawer(record.body)}
-                    style={{ cursor: 'pointer', color: 'rgb(22, 119, 255)', textDecoration: 'none', marginTop: '1px' }}
-                    >
-                        {record.id}
-                </span>
+                <Button type="link" className="wa-resource-name" title={record.id} onClick={() => showDrawer(record.body)}>
+                    {record.id}
+                </Button>
             ),
         },
         {
@@ -196,14 +191,10 @@ export const AuditLog = () => {
             <Drawer anchor="right" title="事件Body详情" width={500} onClose={onCloseDrawer} open={drawerOpen}>
                 <JsonViewer src={annotationsJson} displayObjectSize={false} />
             </Drawer>
-            <div style={{ display: "flex", justifyContent: "space-between", width: "50vh" }}>
+            <div className="wa-list-toolbar wa-audit-toolbar">
                 <Select
                     allowClear
                     placeholder="时间范围"
-                    style={{
-                        flex: 1,
-                        marginRight: "10px",
-                    }}
                     options={[
                         {
                             value: "1",
@@ -238,10 +229,9 @@ export const AuditLog = () => {
                         setScope(record)
                     }}
                 />
-                <Search allowClear placeholder="输入搜索关键字" style={{ width: 300 }} onSearch={onSearch} />
+                <div className="wa-list-toolbar__search"><Search allowClear placeholder="输入搜索关键字" onSearch={onSearch} /></div>
 
                 <Button
-                    style={{ marginLeft: '10px'}}
                     onClick={() => {
                         fetchData()
                     }}

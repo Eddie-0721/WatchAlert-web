@@ -78,10 +78,9 @@ export const ServiceGroupSidebar = ({ selectedGroupId, onGroupChange }) => {
     }
 
     return (
-        <div style={{
+        <div className="wa-service-group-sidebar" style={{
             display: 'flex',
             flexDirection: 'column',
-            height: 'calc(100vh - 120px)',
             overflow: 'hidden',
             background: '#fff',
             borderRadius: '10px',
@@ -132,14 +131,18 @@ export const ServiceGroupSidebar = ({ selectedGroupId, onGroupChange }) => {
             </div>
 
             {/* 卡片列表 */}
-            <div style={{ flex: 1, overflow: 'auto', padding: '0 8px 8px' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <div className="wa-service-group-sidebar__list" style={{ flex: 1, padding: '0 8px 8px' }}>
+                <div className="wa-service-group-sidebar__items">
                     {filteredGroupList.map(group => {
                         const isSelected = String(group.id) === String(selectedGroupId)
                         const isHovered = hoveredGroupId === String(group.id)
                         return (
                             <div
                                 key={group.id}
+                                role="button"
+                                tabIndex={0}
+                                aria-label={group.name}
+                                aria-current={isSelected ? 'page' : undefined}
                                 style={{
                                     padding: '10px 12px',
                                     borderRadius: '8px',
@@ -156,6 +159,7 @@ export const ServiceGroupSidebar = ({ selectedGroupId, onGroupChange }) => {
                                     position: 'relative',
                                 }}
                                 onClick={() => onGroupChange(group.id)}
+                                onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onGroupChange(group.id) } }}
                                 onMouseEnter={() => setHoveredGroupId(String(group.id))}
                                 onMouseLeave={() => setHoveredGroupId(null)}
                             >
@@ -186,28 +190,28 @@ export const ServiceGroupSidebar = ({ selectedGroupId, onGroupChange }) => {
                                     </Tooltip>
 
                                     {/* hover 操作按钮（内联右侧） */}
-                                    {isHovered && (
-                                        <div style={{ display: 'flex', gap: '2px', flexShrink: 0, marginTop: '-4px' }}>
+                                    <div className="wa-service-group-sidebar__actions" style={{ display: 'flex', gap: '2px', flexShrink: 0, marginTop: '-4px' }}>
                                             <Tooltip title="编辑">
                                                 <Button
                                                     type="text"
                                                     size="small"
+                                                    aria-label={`编辑${group.name}`}
                                                     icon={<EditOutlined style={{ fontSize: '12px', color: '#595959' }} />}
                                                     onClick={(e) => { e.stopPropagation(); handleUpdateGroup(group) }}
-                                                    style={{ padding: '2px', height: '20px', width: '20px', minWidth: '20px' }}
+                                                    style={{ padding: '2px', height: '28px', width: '28px', minWidth: '28px' }}
                                                 />
                                             </Tooltip>
                                             <Tooltip title="删除">
                                                 <Button
                                                     type="text"
                                                     size="small"
+                                                    aria-label={`删除${group.name}`}
                                                     icon={<DeleteOutlined style={{ fontSize: '12px' }} />}
                                                     onClick={(e) => handleDeleteGroup(group, e)}
-                                                    style={{ padding: '2px', height: '20px', width: '20px', minWidth: '20px', color: '#ff4d4f' }}
+                                                    style={{ padding: '2px', height: '28px', width: '28px', minWidth: '28px', color: '#ff4d4f' }}
                                                 />
                                             </Tooltip>
-                                        </div>
-                                    )}
+                                    </div>
                                 </div>
                             </div>
                         )

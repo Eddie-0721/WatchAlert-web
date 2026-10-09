@@ -36,6 +36,7 @@ import { getDatasourceList } from '../../api/datasource'
 import { PrometheusPromQL } from '../promethues'
 import { Breadcrumb } from "../../components/Breadcrumb"
 import dayjs from 'dayjs'
+import './index.css'
 
 const { Title, Text } = Typography
 const { RangePicker } = DatePicker
@@ -558,9 +559,9 @@ export const DataAnalysis = () => {
                     marginBottom: '16px',
                     background: '#fff'
                 }}>
-                    <Row gutter={16} align="middle">
+                    <Row gutter={[16, 16]} align="middle" className="wa-query-input-row">
                         {/* 左侧：数据源选择 */}
-                        <Col span={6}>
+                        <Col xs={24} md={7} lg={6}>
                             <Form.Item
                                 label="数据源"
                                 required
@@ -584,7 +585,7 @@ export const DataAnalysis = () => {
                         </Col>
                         
                         {/* 中间：PromQL 输入框 */}
-                        <Col span={16}>
+                        <Col xs={24} md={13} lg={14}>
                             <Form.Item
                                 label="PromQL"
                                 required
@@ -602,14 +603,13 @@ export const DataAnalysis = () => {
                         </Col>
                         
                         {/* 右侧：执行查询按钮 */}
-                        <Col span={2}>
+                        <Col xs={24} md={4}>
                             <Button
                                 type="primary"
                                 icon={<SearchOutlined />}
                                 onClick={handleSearch}
                                 loading={loading}
                                 block
-                                style={{backgroundColor: '#000'}}
                             >
                                 查询
                             </Button>

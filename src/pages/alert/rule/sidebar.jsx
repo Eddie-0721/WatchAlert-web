@@ -129,12 +129,14 @@ const TreeNode = ({
             >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     {hasChildren ? (
-                        <span
+                        <button
+                            type="button"
+                            aria-label={`${isExpanded ? '折叠' : '展开'}${node.name}`}
                             onClick={(e) => { e.stopPropagation(); toggleExpand(String(node.id)) }}
-                            style={{ fontSize: '11px', color: '#8c8c8c', cursor: 'pointer', flexShrink: 0, width: '14px', textAlign: 'center' }}
+                            className="wa-group-sidebar__expand"
                         >
                             {isExpanded ? <CaretDownOutlined /> : <CaretRightOutlined />}
-                        </span>
+                        </button>
                     ) : (
                         <span style={{ width: '14px', flexShrink: 0 }} />
                     )}
@@ -146,7 +148,11 @@ const TreeNode = ({
                     }} />
 
                     <Tooltip title={node.name} placement="right">
-                        <span style={{
+                        <span role={node.isReal ? 'button' : undefined}
+                            tabIndex={node.isReal ? 0 : undefined}
+                            aria-current={isSelected ? 'page' : undefined}
+                            onKeyDown={(e) => { if (node.isReal && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onRuleGroupChange(node.id) } }}
+                            style={{
                             flex: 1,
                             fontSize: '12px',
                             lineHeight: '1.4',
@@ -162,24 +168,26 @@ const TreeNode = ({
                     </Tooltip>
 
                     {/* hover 操作按钮（内联右侧） */}
-                    {isHovered && node.isReal && (
-                        <div style={{ display: 'flex', gap: '2px', flexShrink: 0, marginTop: '-4px' }}>
+                    {node.isReal && (
+                        <div className="wa-group-sidebar__actions" style={{ display: 'flex', gap: '2px', flexShrink: 0, marginTop: '-4px' }}>
                             <Tooltip title="编辑">
                                 <Button
                                     type="text"
                                     size="small"
+                                    aria-label={`编辑${node.name}`}
                                     icon={<EditOutlined style={{ fontSize: '12px', color: '#595959' }} />}
                                     onClick={(e) => { e.stopPropagation(); onUpdateGroup(node) }}
-                                    style={{ padding: '2px', height: '20px', width: '20px', minWidth: '20px' }}
+                                    style={{ padding: '2px', height: '28px', width: '28px', minWidth: '28px' }}
                                 />
                             </Tooltip>
                             <Tooltip title="删除">
                                 <Button
                                     type="text"
                                     size="small"
+                                    aria-label={`删除${node.name}`}
                                     icon={<DeleteOutlined style={{ fontSize: '12px' }} />}
                                     onClick={(e) => onDeleteGroup(node, e)}
-                                    style={{ padding: '2px', height: '20px', width: '20px', minWidth: '20px', color: '#ff4d4f' }}
+                                    style={{ padding: '2px', height: '28px', width: '28px', minWidth: '28px', color: '#ff4d4f' }}
                                 />
                             </Tooltip>
                         </div>
@@ -290,10 +298,9 @@ export const RuleGroupSidebar = ({ selectedRuleGroupId, onRuleGroupChange }) => 
     }
 
     return (
-        <div style={{
+        <div className="wa-group-sidebar" style={{
             display: 'flex',
             flexDirection: 'column',
-            height: 'calc(100vh - 120px)',
             overflow: 'hidden',
             background: '#fff',
             borderRadius: '10px',
@@ -344,7 +351,7 @@ export const RuleGroupSidebar = ({ selectedRuleGroupId, onRuleGroupChange }) => 
             </div>
 
             {/* 树形列表 */}
-            <div style={{ flex: 1, overflow: 'auto', padding: '0 8px 8px' }}>
+            <div className="wa-group-sidebar__list" style={{ flex: 1, padding: '0 8px 8px' }}>
                 {groupTree.map(node => (
                     <TreeNode
                         key={node.id}

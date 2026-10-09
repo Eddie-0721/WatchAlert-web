@@ -265,14 +265,12 @@ export const RuleTemplateGroup = () => {
     return (
         <>
         <Breadcrumb items={['告警管理', '模版组']} />
-        <div style={{ display: 'flex', height: '100%' }}>
+        <div className="wa-management-split">
             {/* 卡片式 sidebar */}
-            <div style={{ width: '210px', flexShrink: 0, paddingRight: '12px' }}>
-                <div style={{
+            <div className="wa-management-sidebar">
+                <div className="wa-template-type-sidebar" style={{
                     display: 'flex',
                     flexDirection: 'column',
-                    height: 'calc(100vh - 120px)',
-                    overflow: 'hidden',
                     background: '#fff',
                     borderRadius: '10px',
                     border: '1px solid #f0f0f0',
@@ -295,14 +293,18 @@ export const RuleTemplateGroup = () => {
                     </div>
 
                     {/* 类型卡片列表 */}
-                    <div style={{ flex: 1, overflow: 'auto', padding: '0 8px 8px' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <div className="wa-template-type-sidebar__list" style={{ flex: 1, padding: '0 8px 8px' }}>
+                        <div className="wa-template-type-items">
                             {menuItems.map(item => {
                                 const isSelected = item.key === selectedType
                                 return (
-                                    <div
+                                    <button
                                         key={item.key}
+                                        type="button"
+                                        aria-pressed={isSelected}
                                         style={{
+                                            width: '100%',
+                                            textAlign: 'left',
                                             padding: '9px 12px',
                                             borderRadius: '7px',
                                             cursor: 'pointer',
@@ -332,7 +334,7 @@ export const RuleTemplateGroup = () => {
                                                 {item.label}
                                             </span>
                                         </div>
-                                    </div>
+                                    </button>
                                 )
                             })}
                         </div>
@@ -341,7 +343,7 @@ export const RuleTemplateGroup = () => {
             </div>
 
             {/* 主内容区 */}
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', marginLeft: '20px' }}>
+            <div className="wa-management-main">
                 <div style={{
                     background: '#fff',
                     borderRadius: '8px',
@@ -351,19 +353,17 @@ export const RuleTemplateGroup = () => {
                     overflow: 'hidden',
                 }}>
                     {/* 搜索栏 */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
-                        <Search
+                    <div className="wa-list-toolbar" style={{ marginBottom: 16 }}>
+                        <div className="wa-list-toolbar__search"><Search
                             allowClear
                             placeholder="输入搜索关键字"
                             onSearch={onSearch}
-                            style={{ width: 300 }}
                             prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
-                        />
+                        /></div>
                         <Button
                             type="primary"
                             icon={<PlusOutlined />}
                             onClick={() => setVisible(true)}
-                            style={{ backgroundColor: '#000000' }}
                         >
                             创建
                         </Button>
@@ -371,6 +371,7 @@ export const RuleTemplateGroup = () => {
 
                     <TableWithPagination
                         columns={columns}
+                        scrollX={680}
                         dataSource={list}
                         loading={loading}
                         pagination={pagination}

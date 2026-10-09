@@ -1,0 +1,8 @@
+.wa-profile-avatar { width: 160px; height: 160px; overflow: hidden; border-radius: 50%; }
+.wa-profile-avatar__letter { font-size: 112px; line-height: 1; }
+.wa-profile-edit { width: min(100%, 240px); background: #18181b; }
+
+@media (max-width: 760px) {
+  .wa-profile-avatar { width: 120px; height: 120px; }
+  .wa-profile-avatar__letter { font-size: 84px; }
+}

@@ -1166,7 +1166,7 @@ export const AlertCurrentEvent = (props) => {
             </Drawer>
 
             <div style={{ marginBottom: "16px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div className="wa-event-toolbar">
                     <Space wrap>
                         <Search
                             allowClear

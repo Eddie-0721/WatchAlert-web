@@ -1,4 +1,5 @@
 import { Avatar, Form, Input, Button, message, Tabs, Table, Modal, Space, Tooltip } from "antd";
+import './index.css';
 import { CopyOutlined, DeleteOutlined, EditOutlined } from '@ant-design/icons';
 import React, { useEffect, useState } from "react";
 import { getUserInfo, updateUser } from "../../api/user";
@@ -28,7 +29,7 @@ export default function Profile() {
             const res = await getUserInfo();
             setUserInfo(res?.data);
             form.setFieldsValue({
-                password: "****************",
+                password: "",
                 phone: res?.data?.phone,
                 email: res?.data?.email,
             });
@@ -39,12 +40,8 @@ export default function Profile() {
     };
 
     useEffect(() => {
-        if (isEditing) {
-            form.setFieldsValue({ password: "" });
-        } else {
-            form.setFieldsValue({ password: "****************" });
-        }
-    }, [isEditing]);
+        form.setFieldsValue({ password: "" });
+    }, [isEditing, form]);
 
     // API密钥管理相关函数
     const fetchApiKeys = async () => {
@@ -120,15 +117,15 @@ export default function Profile() {
                 ...userInfo,
                 phone: values.phone,
                 email: values.email,
-                password: values.password,
+                password: values.password || '',
             };
-            await updateUser(params);
+            const result = await updateUser(params);
+            if (result?.code !== 200) throw new Error('用户信息更新失败');
             setIsEditing(false); // 更新成功后退出编辑模式
             await fetchUserInfo(); // 重新获取用户信息
-            message.success("用户信息更新成功");
         } catch (error) {
             console.error(error);
-            message.error("Failed to update user info");
+            message.error("用户信息更新失败");
         }
     };
 
@@ -253,21 +250,21 @@ export default function Profile() {
                                 <div className="p-6">
                                     <div className="flex flex-col items-center space-y-4">
                                         {/* Avatar Section */}
-                                        <div className="w-64 h-64 rounded-full overflow-hidden">
+                                        <div className="wa-profile-avatar">
                                             <Avatar
                                                 style={{
                                                     background: 'linear-gradient(135deg, #ffcb7dff 0%, #a78753ff 100%)',
                                                     color: "#000",
-                                                    width: 256,
-                                                    height: 256,
+                                                    width: '100%',
+                                                    height: '100%',
                                                     display: 'flex',
                                                     alignItems: 'center',
                                                     justifyContent: 'center',
                                                 }}
                                                 size="large"
                                             >
-                                                <div style={{ marginTop: -20 }}>
-                                                    <span style={{ fontSize: 180, lineHeight: 1 }}>
+                                                <div>
+                                                    <span className="wa-profile-avatar__letter">
                                                         {userInfo?.username?.charAt(0).toUpperCase() || ''}
                                                     </span>
                                                 </div>
@@ -279,22 +276,7 @@ export default function Profile() {
                                             <p className="text-l text-muted-foreground">UID: {userInfo?.userid}</p>
                                         </div>
                                         {/* Edit Profile Button */}
-                                        <div className="w-full px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors">
-                                            <Button
-
-                                                type="primary"
-                                                htmlType="submit"
-                                                onClick={() => setIsEditing(true)}
-                                                style={{
-                                                    marginLeft: '12px',
-                                                    width: '90%',
-                                                    marginTop: '-15px',
-                                                    backgroundColor: '#000000'
-                                                }}
-                                            >
-                                                编辑信息
-                                            </Button>
-                                        </div>
+                                        <Button type="primary" className="wa-profile-edit" onClick={() => setIsEditing(true)}>编辑信息</Button>
                                     </div>
                                 </div>
                             </div>
@@ -308,38 +290,37 @@ export default function Profile() {
                                     <Form form={form} onFinish={handleUpdate} layout="vertical">
                                         {/* Phone */}
                                         <Form.Item
-                                            label="Phone"
+                                            label="手机号"
                                             name="phone"
                                             rules={[
-                                                { pattern: /^[0-9]{10,11}$/, message: "Invalid phone number" },
+                                                { pattern: /^[0-9]{10,11}$/, message: "请输入有效的手机号" },
                                                 { required: isEditing, message: "请输入手机号" },
                                             ]}
                                         >
-                                            <Input placeholder="Enter phone number" disabled={!isEditing} />
+                                            <Input placeholder="请输入手机号" disabled={!isEditing} />
                                         </Form.Item>
 
                                         {/* Email */}
                                         <Form.Item
-                                            label="Email"
+                                            label="邮箱"
                                             name="email"
                                             rules={[
-                                                { type: "email", message: "Invalid email address" },
+                                                { type: "email", message: "请输入有效的邮箱地址" },
                                                 { required: isEditing, message: "请输入邮箱" },
                                             ]}
                                         >
-                                            <Input placeholder="Enter email address" disabled={!isEditing} />
+                                            <Input placeholder="请输入邮箱地址" disabled={!isEditing} />
                                         </Form.Item>
 
                                         {/* Password */}
                                         <Form.Item
-                                            label="Password"
+                                            label="新密码（可选）"
                                             name="password"
                                             rules={[
-                                                { min: 6, message: "Password must be at least 6 characters" },
-                                                { required: isEditing, message: "请输入密码" },
+                                                { min: 6, message: "密码至少需要 6 个字符" },
                                             ]}
                                         >
-                                            <Input.Password placeholder="Enter new password" disabled={!isEditing} />
+                                            <Input.Password placeholder={isEditing ? '留空则不修改密码' : '密码已设置'} disabled={!isEditing} />
                                         </Form.Item>
 
                                         {/* 按钮区域 */}

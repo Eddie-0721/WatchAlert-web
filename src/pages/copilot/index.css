@@ -37,6 +37,7 @@
 }
 .copilot-diagnostics { margin:16px 0; font-size:12px; }
 .copilot-diagnostics > small { margin-left:12px; color:#4d4d4d; }
+@media (max-width: 768px) { .copilot-diagnostics > small { display:block; margin:8px 0 0; line-height:1.6; } }
 .copilot-diagnostics ul { padding:0; list-style:none; max-width:720px; }
 .copilot-diagnostics li { display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; border-bottom:1px solid #ebebeb; padding:8px 0; }
 .copilot-diagnostics .ant-tag { white-space:normal; }

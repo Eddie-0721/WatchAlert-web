@@ -33,15 +33,15 @@ export const GrafanaDashboardComponent = () => {
     return (
         <>
             <Breadcrumb items={['仪表盘', '详情']} />
-            <div style={{ marginLeft: '-24px', height: '78vh' }}>
+            <div style={{ width: '100%', minWidth: 0, height: 'calc(100dvh - 180px)', minHeight: 420 }}>
                 <iframe
                     src={iframeSrc}
-                    frameborder="0"
+                    title="Grafana 仪表盘"
                     style={{
-                        margin: '0',
-                        width: 'calc(100% + 25px)',
-                        height: 'calc(95vh)',
-                        overflow: 'auto',
+                        display: 'block',
+                        width: '100%',
+                        height: '100%',
+                        border: 0,
                     }}
                 />
             </div >
