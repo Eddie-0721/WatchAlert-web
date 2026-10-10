@@ -91,9 +91,9 @@ export function get(url, params = {}, options = {}) {
  * @returns {Promise}
  */
 
-export function post(url, data) {
+export function post(url, data, options = {}) {
     return new Promise((resolve, reject) => {
-        axios.post(url, data).then(
+        axios.post(url, data, { signal: options.signal }).then(
             (response) => {
                 //关闭进度条
                 resolve(response.data);
@@ -161,7 +161,7 @@ export default function (method, url, param, options) {
                     });
                 break;
             case 'post':
-                post(url, param)
+                post(url, param, options)
                     .then(function (response) {
                         resolve(response);
                     })

@@ -64,18 +64,9 @@ async function ProbingDelete(params) {
     }
 }
 
-async function ProbingOnce(params) {
-    try {
-        const res = await http('post', '/api/w8t/probing/onceProbing', params);
-        message.open({
-            type: 'success',
-            content: '拨测请求提交成功!',
-        });
-        return res;
-    } catch (error) {
-        HandleApiError(error)
-        return error
-    }
+async function ProbingOnce(params, options = {}) {
+    // The page owns cancellation, stale-result checks and user feedback.
+    return http('post', '/api/w8t/probing/onceProbing', params, options);
 }
 
 async function ProbingGetHistory(params) {

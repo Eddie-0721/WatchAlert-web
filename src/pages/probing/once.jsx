@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useState, useContext, useMemo } from "react"
+import React, { useEffect, useState, useContext, useMemo, useRef, useCallback } from "react"
 import {Alert, Tabs, Form, Input, Select, Button, Collapse, Table, Tag, Spin, Typography, Space, message} from "antd"
 import Marquee from "react-fast-marquee"
 import { ProbingOnce } from "../../api/probing"
@@ -10,13 +10,20 @@ import { Breadcrumb } from "../../components/Breadcrumb";
 
 const { Panel } = Collapse
 
+const validatePositiveInteger = (_, value) => {
+    if (value === undefined || value === null || value === '') return Promise.resolve()
+    return Number.isSafeInteger(Number(value)) && Number(value) > 0
+        ? Promise.resolve()
+        : Promise.reject(new Error('请输入大于 0 的整数'))
+}
+
 const isValidPort = (port) => {
     if (!port) {
         return true
     }
 
-    const portNumber = Number.parseInt(port, 10)
-    return portNumber >= 1 && portNumber <= 65535
+    const portNumber = Number(port)
+    return Number.isInteger(portNumber) && portNumber >= 1 && portNumber <= 65535
 }
 
 // Context for managing nested form item names
@@ -42,6 +49,21 @@ export const OnceProbing = () => {
     const [responseData, setResponseData] = useState(null)
     const [form] = Form.useForm()
     const [loading, setLoading] = useState(false)
+    const [requestError, setRequestError] = useState(null)
+    const requestRef = useRef(null)
+    const cancelRequest = useCallback(() => {
+        const previous = requestRef.current
+        requestRef.current = null
+        previous?.abort()
+    }, [])
+    useEffect(() => cancelRequest, [cancelRequest])
+
+    const clearProbeContext = () => {
+        cancelRequest()
+        setLoading(false)
+        setResponseData(null)
+        setRequestError(null)
+    }
 
     const tabs = [
         { key: "1", label: "HTTP" },
@@ -59,6 +81,7 @@ export const OnceProbing = () => {
     }, [])
 
     const handleChangeProbingType = (key) => {
+        clearProbeContext()
         const types = { 1: "HTTP", 2: "ICMP", 3: "TCP", 4: "SSL" }
         setProbingType(types[key])
         // Reset form fields relevant to the previous probing type to avoid stale data
@@ -74,10 +97,17 @@ export const OnceProbing = () => {
     }
 
     const validateInput = (_, value) => {
-        const urlPattern = /^(https?:\/\/)[a-zA-Z0-9.-]+(?::\d+)?(?:\/[^\s]*)?$/
-        const domainIpPattern = /^(([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}|(\d{1,3}\.){3}\d{1,3})$/
-        const tcpPattern = /^(([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}|(\d{1,3}\.){3}\d{1,3}):\d+$/
-        const domainPattern = /^([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(?::(\d+))?$/
+        // Internal hostnames and IPv6 are valid probe targets too. Syntax checks
+        // here do not replace backend access controls or actual DNS resolution.
+        const hostPattern = /^(?:[a-zA-Z0-9_.-]+|[a-fA-F0-9:]+(?:%[a-zA-Z0-9_.-]+)?)$/
+        const tcpPattern = /^(\[[^\]\s]+\]|[a-zA-Z0-9_.-]+):(\d+)$/
+        const validURL = (candidate) => {
+            if (/\s/.test(candidate)) return false
+            try {
+                const parsed = new URL(candidate)
+                return ['http:', 'https:'].includes(parsed.protocol) && Boolean(parsed.hostname)
+            } catch { return false }
+        }
 
         if (!value) {
             return Promise.reject("请输入端点")
@@ -85,20 +115,20 @@ export const OnceProbing = () => {
 
         switch (probingType) {
             case "HTTP":
-                return urlPattern.test(value)
+                return /^https?:\/\//i.test(value) && validURL(value)
                     ? Promise.resolve()
                     : Promise.reject("请输入有效的 http(s)://URL")
             case "ICMP":
-                return domainIpPattern.test(value)
+                return hostPattern.test(value)
                     ? Promise.resolve()
                     : Promise.reject("请输入有效的 域名或IP")
             case "TCP":
-                return tcpPattern.test(value)
+                const tcpMatch = tcpPattern.exec(value)
+                return tcpMatch && isValidPort(tcpMatch[2])
                     ? Promise.resolve()
                     : Promise.reject("请输入有效的 IP/域名:port")
             case "SSL":
-                const match = domainPattern.exec(value)
-                return match && isValidPort(match[2])
+                return !/[\s/?#@]/.test(value) && validURL(`https://${value}`)
                     ? Promise.resolve()
                     : Promise.reject("请输入有效的 域名或域名:端口")
             default:
@@ -187,28 +217,24 @@ export const OnceProbing = () => {
     }
 
     const handleSubmit = async () => {
-        console.log('handleSubmit 函数被调用')
+        // Guard before async validation as well as while the request is pending.
+        if (requestRef.current) return
+        const controller = new AbortController()
+        requestRef.current = controller
         try {
+            const values = await form.validateFields()
+            if (requestRef.current !== controller) return
             setLoading(true)
-            
-            // Get current form values
-            const values = form.getFieldsValue()
-            console.log('当前表单值:', values)
-            
-            // Check if endpoint exists
+            setResponseData(null)
+            setRequestError(null)
             const endpoint = values.probingEndpointConfig?.endpoint
-            if (!endpoint) {
-                console.error('端点为空')
-                message.error('请输入端点')
-                return
-            }
 
             const params = {
                 ruleType: probingType,
                 probingEndpointConfig: {
                     endpoint: endpoint,
                     strategy: {
-                        timeout: Number.parseInt(values.probingEndpointConfig?.strategy?.timeout || 5, 10),
+                        timeout: Number(values.probingEndpointConfig?.strategy?.timeout || 5),
                     },
                 },
             }
@@ -243,25 +269,32 @@ export const OnceProbing = () => {
             // Conditionally add ICMP specific configurations
             if (probingType === "ICMP") {
                 params.probingEndpointConfig.icmp = {
-                    interval: Number.parseInt(values.probingEndpointConfig?.icmp?.interval || 1, 10),
-                    count: Number.parseInt(values.probingEndpointConfig?.icmp?.count || 10, 10),
+                    interval: Number(values.probingEndpointConfig?.icmp?.interval || 1),
+                    count: Number(values.probingEndpointConfig?.icmp?.count || 10),
                 }
             }
 
-            console.log('发送拨测请求:', params)
-            const res = await ProbingOnce(params)
-            if (res && res?.data) {
-                // Parse the new metrics data structure
-                const parsedData = parseMetricsData(res?.data)
-                setResponseData(parsedData)
-                console.log('拨测响应:', res?.data)
-                console.log('解析后数据:', parsedData)
+            const res = await ProbingOnce(params, { signal: controller.signal })
+            if (requestRef.current !== controller || controller.signal.aborted) return
+            if (res?.code !== 200) {
+                throw new Error(typeof res?.data === 'string' ? res.data : '拨测请求失败，请稍后重试')
             }
+            const requiredMetric = { HTTP: 'probe_http_success', ICMP: 'probe_icmp_packet_loss_percent', TCP: 'probe_tcp_success', SSL: 'probe_ssl_certificate_valid' }[probingType]
+            if (!Array.isArray(res.data) || !res.data.some(metric => metric?.name === requiredMetric && Number.isFinite(metric.value))) {
+                throw new Error('拨测未返回有效结果，请重试')
+            }
+            setResponseData(parseMetricsData(res.data))
+            message.success('拨测完成')
         } catch (errorInfo) {
-            console.error("请求失败:", errorInfo)
-            message.error('拨测请求失败，请检查输入参数')
+            if (requestRef.current !== controller || controller.signal.aborted) return
+            if (errorInfo?.errorFields || errorInfo?.outOfDate) return
+            const detail = errorInfo?.response?.data?.data
+            setRequestError(typeof detail === 'string' ? detail : errorInfo?.code === 'ECONNABORTED' ? '拨测请求超时，请重试' : errorInfo?.message || '拨测请求失败，请稍后重试')
         } finally {
-            setLoading(false)
+            if (requestRef.current === controller) {
+                requestRef.current = null
+                setLoading(false)
+            }
         }
     }
 
@@ -446,7 +479,7 @@ export const OnceProbing = () => {
     }
 
     return (
-        <Spin spinning={loading} tip="加载中...">
+        <div>
             <Breadcrumb items={['网络分析', '即时拨测']} />
             <div>
                 <Alert
@@ -460,6 +493,7 @@ export const OnceProbing = () => {
                 />
                 <Tabs defaultActiveKey="1" items={tabs} onChange={handleChangeProbingType} />
             </div>
+            <Spin spinning={loading} tip="拨测中…">
             <div
                 style={{
                     textAlign: "left",
@@ -472,7 +506,7 @@ export const OnceProbing = () => {
                     backgroundColor: "#fff",
                 }}
             >
-                <Form form={form} layout="vertical" style={{ marginTop: "10px" }} initialValues={initialFormValues}>
+                <Form form={form} layout="vertical" style={{ marginTop: "10px" }} initialValues={initialFormValues} onValuesChange={clearProbeContext}>
                     {/* All form items related to probingEndpointConfig are nested here */}
                     <MyFormItemGroup prefix={["probingEndpointConfig"]}>
                         <MyFormItem
@@ -489,7 +523,7 @@ export const OnceProbing = () => {
                                                 { value: "GET", label: "GET" },
                                                 { value: "POST", label: "POST" },
                                             ]}
-                                            onChange={setMethodType}
+                                            onChange={(value) => { clearProbeContext(); setMethodType(value) }}
                                         />
                                     ) : null
                                 }
@@ -497,10 +531,8 @@ export const OnceProbing = () => {
                                 addonAfter={
                                     <Button
                                         type="link"
-                                        onClick={() => {
-                                            console.log('拨测按钮被点击')
-                                            handleSubmit()
-                                        }}
+                                        onClick={handleSubmit}
+                                        disabled={loading}
                                         style={{
                                             borderLeft: "none",
                                             borderTopRightRadius: "0px",
@@ -523,7 +555,7 @@ export const OnceProbing = () => {
                             <Panel header="高级选项" key="1">
                                 {/* Strategy configuration */}
                                 <MyFormItemGroup prefix={["strategy"]}>
-                                    <MyFormItem name="timeout" label="超时时间 (秒)">
+                                    <MyFormItem name="timeout" label="超时时间 (秒)" rules={[{ validator: validatePositiveInteger }]}>
                                         <Input type="number" placeholder="请输入超时时间" />
                                     </MyFormItem>
                                 </MyFormItemGroup>
@@ -588,10 +620,10 @@ export const OnceProbing = () => {
                                 {/* ICMP specific options */}
                                 {probingType === "ICMP" && (
                                     <MyFormItemGroup prefix={["icmp"]}>
-                                        <MyFormItem name="count" label="请求包数量">
+                                        <MyFormItem name="count" label="请求包数量" rules={[{ validator: validatePositiveInteger }]}>
                                             <Input type="number" min={1} placeholder="请输入请求包数量"/>
                                         </MyFormItem>
-                                        <MyFormItem name="interval" label="请求间隔">
+                                        <MyFormItem name="interval" label="请求间隔" rules={[{ validator: validatePositiveInteger }]}>
                                             <Input type="number" min={1} placeholder="请输入请求间隔时间"/>
                                         </MyFormItem>
                                     </MyFormItemGroup>
@@ -600,6 +632,7 @@ export const OnceProbing = () => {
                         </Collapse>
                     </MyFormItemGroup>
 
+                    {requestError && <Alert type="error" showIcon message={requestError} style={{ marginTop: 16 }} />}
                     {responseData && (
                         <div style={{marginTop: "20px"}}>
                             <Table
@@ -615,6 +648,7 @@ export const OnceProbing = () => {
                     )}
                 </Form>
             </div>
-        </Spin>
+            </Spin>
+        </div>
     );
 };
